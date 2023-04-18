@@ -3,7 +3,7 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/name: rolebinding
-    app.kubernetes.io/instance: leader-election-rolebinding
+    app.kubernetes.io/instance: mpas-project-leader-election-rolebinding
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: mpas-project-controller
     app.kubernetes.io/part-of: mpas-project-controller
@@ -12,8 +12,8 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: leader-election-role
+  name: mpas-project-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: controller-manager
+  name: mpas-project-controller-manager
   namespace: system
