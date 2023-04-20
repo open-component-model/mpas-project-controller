@@ -1,4 +1,5 @@
-bases:
+namespace: ocm-system
+resources:
 - ../crd
 - ../rbac
 - ../manager
