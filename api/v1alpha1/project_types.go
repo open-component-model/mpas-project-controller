@@ -7,70 +7,17 @@ package v1alpha1
 import (
 	"time"
 
-	"github.com/fluxcd/pkg/apis/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
+)
 
 // ProjectSpec defines the desired state of Project
 type ProjectSpec struct {
 	// +required
-	Git Git `json:"git"`
+	Git gcv1alpha1.RepositorySpec `json:"git"`
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
-}
-
-type Git struct {
-	// Provider is the name of the git provider, e.g. github, gitlab, bitbucket
-	// +required
-	Provider string `json:"provider"`
-
-	// Owner is the name of the owner of the repository, e.g. open-component-model
-	// +required
-	Owner string `json:"owner"`
-
-	// IsOrganization specifies if the owner is an organization or a user
-	// +optional
-	// +kubebuilder:default=false
-	IsOganization bool `json:"isOrganization"`
-
-	// Repository contains the details of the repository
-	// +required
-	Repository Repository `json:"repository"`
-
-	// Credentials contains a reference to the secret containing the credentials
-	// +required
-	Credentials Credentials `json:"credentials"`
-}
-
-type Repository struct {
-	// Name is the name of the repository, e.g. mpas-project-controller
-	// +required
-	Name string `json:"name"`
-
-	// Maintainers is a list of maintainers of the repository
-	// +required
-	Maintainers []string `json:"maintainers"`
-
-	// Visibility is the visibility of the repository, must be one of public, private, or internal.
-	// Default is private
-	// +optional
-	// +kubebuilder:validation:Enum=public;private;internal
-	// +kubebuilder:default=private
-	Visibility string `json:"visibility"`
-
-	// ExistingReposityPolicy specifies the policy for existing repositories, must be one of adopt or fail
-	// Default is adopt
-	// +optional
-	// +kubebuilder:validation:Enum=adopt;fail
-	// +kubebuilder:default=adopt
-	ExistingReposityPolicy string `json:"existingReposityPolicy"`
-}
-
-type Credentials struct {
-	SecretRef meta.LocalObjectReference `json:"secretRef"`
 }
 
 // ProjectStatus defines the observed state of Project
