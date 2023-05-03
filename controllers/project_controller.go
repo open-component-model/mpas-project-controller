@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"time"
 
-	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/fluxcd/pkg/runtime/patch"
 	rreconcile "github.com/fluxcd/pkg/runtime/reconcile"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,27 +43,24 @@ type ProjectReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var (
-		retErr error
-		result ctrl.Result
-	)
-
+func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, retErr error) {
 	log := log.FromContext(ctx).WithName("mpas-project-reconcile")
 	log.Info("starting mpas-project reconcile loop")
+
+	result = ctrl.Result{}
 
 	obj := &mpasv1alpha1.Project{}
 	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
 		if apierrors.IsNotFound(err) {
-			return result, nil
+			return
 		}
 		retErr = fmt.Errorf("failed to get project %s/%s: %w", req.NamespacedName.Namespace, req.NamespacedName.Name, err)
-		return result, retErr
+		return
 	}
 
 	if obj.DeletionTimestamp != nil {
 		log.Info("project is being deleted...")
-		return result, nil
+		return
 	}
 
 	//Initialize the patch helper with the current version of the object.
@@ -119,7 +116,7 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	result, retErr = r.reconcile(ctx, obj, patchHelper)
 
-	return ctrl.Result{}, nil
+	return
 }
 
 func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Project, sp *patch.SerialPatcher) (ctrl.Result, error) {
@@ -131,7 +128,7 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		rreconcile.ProgressiveStatus(false, obj, meta.ProgressingReason,
 			"processing object: new generation %d -> %d", obj.Status.ObservedGeneration, obj.Generation)
 		if err := sp.Patch(ctx, obj); err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to patch object: %w", err)
 		}
 	}
 
@@ -210,23 +207,18 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1alpha1.Project) (*corev1.Namespace, error) {
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: obj.GetName(),
-		},
-	}
+	ns := &corev1.Namespace{}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ns, func() error {
-		if ns.ObjectMeta.CreationTimestamp.IsZero() {
-			if err := controllerutil.SetOwnerReference(obj, ns, r.Scheme); err != nil {
-				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: obj.Name}, ns); err != nil {
+		if apierrors.IsNotFound(err) {
+			ns.Name = obj.Name
+			if err := r.Client.Create(ctx, ns); err != nil {
+				return nil, fmt.Errorf("failed to create namespace: %w", err)
 			}
+			return ns, nil
 		}
-		return nil
-	})
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to create or update namespace: %w", err)
+		return nil, fmt.Errorf("failed to get namespace: %w", err)
 	}
 
 	return ns, nil
@@ -241,11 +233,6 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, sa, func() error {
-		if sa.ObjectMeta.CreationTimestamp.IsZero() {
-			if err := controllerutil.SetOwnerReference(obj, sa, r.Scheme); err != nil {
-				return fmt.Errorf("failed to set owner reference on service account: %w", err)
-			}
-		}
 		return nil
 	})
 
@@ -259,8 +246,7 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 func (r *ProjectReconciler) reconcileClusterRoleBinding(ctx context.Context, obj *mpasv1alpha1.Project, sa *corev1.ServiceAccount) error {
 	// TODO(@jmickey): Confirm the name of the ClusterRole to bind Project ServiceAccounts.
 	key := types.NamespacedName{
-		Name:      "mpas-projects-clusterrole", // - Verify this
-		Namespace: obj.GetNamespace(),
+		Name: "mpas-projects-clusterrole", // - Verify this
 	}
 
 	cr := &rbacv1.ClusterRole{}
@@ -273,26 +259,23 @@ func (r *ProjectReconciler) reconcileClusterRoleBinding(ctx context.Context, obj
 			Name:      obj.GetName(),
 			Namespace: obj.GetName(),
 		},
-		Subjects: []rbacv1.Subject{
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, crb, func() error {
+		crb.Subjects = []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
 				Name:      sa.GetName(),
 				Namespace: sa.GetNamespace(),
 			},
-		},
-		RoleRef: rbacv1.RoleRef{
+		}
+
+		crb.RoleRef = rbacv1.RoleRef{
 			Kind:     "ClusterRole",
 			Name:     cr.GetName(),
 			APIGroup: "rbac.authorization.k8s.io",
-		},
-	}
-
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, crb, func() error {
-		if crb.ObjectMeta.CreationTimestamp.IsZero() {
-			if err := controllerutil.SetOwnerReference(obj, crb, r.Scheme); err != nil {
-				return fmt.Errorf("failed to set owner reference on cluster role binding: %w", err)
-			}
 		}
+
 		return nil
 	})
 
@@ -316,11 +299,6 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
-		if repo.ObjectMeta.CreationTimestamp.IsZero() {
-			if err := controllerutil.SetOwnerReference(obj, repo, r.Scheme); err != nil {
-				return fmt.Errorf("failed to set owner reference on repository: %w", err)
-			}
-		}
 		// obj.Spec.Git matches the Repository spec, so we can just assign it.
 		repo.Spec = obj.Spec.Git
 		return nil
@@ -334,10 +312,6 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 }
 
 func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj *mpasv1alpha1.Project, repo *gcv1alpha1.Repository) (*sourcev1.GitRepository, error) {
-	if err := sourcev1.AddToScheme(r.Scheme); err != nil {
-		return nil, fmt.Errorf("failed to add sourcev1 to scheme: %w", err)
-	}
-
 	gitRepo := &sourcev1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obj.GetName(),
@@ -346,12 +320,6 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, gitRepo, func() error {
-		if repo.ObjectMeta.CreationTimestamp.IsZero() {
-			if err := controllerutil.SetOwnerReference(obj, repo, r.Scheme); err != nil {
-				return fmt.Errorf("failed to set owner reference on repository: %w", err)
-			}
-		}
-
 		gitRepo.Spec.URL = repo.GetRepositoryURL()
 		gitRepo.Spec.Reference = &sourcev1.GitRepositoryRef{
 			Branch: repo.Spec.DefaultBranch,
@@ -369,10 +337,6 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 }
 
 func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj *mpasv1alpha1.Project, gitSource *sourcev1.GitRepository) error {
-	if err := kustomizev1.AddToScheme(r.Scheme); err != nil {
-		return fmt.Errorf("failed to add kustomizev1 to scheme: %w", err)
-	}
-
 	paths := []string{"subscriptions", "targets", "products", "generators"}
 
 	for _, path := range paths {
@@ -385,12 +349,6 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.Client, kustomization, func() error {
-			if kustomization.ObjectMeta.CreationTimestamp.IsZero() {
-				if err := controllerutil.SetOwnerReference(obj, kustomization, r.Scheme); err != nil {
-					return fmt.Errorf("failed to set owner reference on kustomization: %w", err)
-				}
-			}
-
 			kustomization.Spec.Path = path
 			kustomization.Spec.Interval = metav1.Duration{
 				Duration: 5 * time.Minute,
