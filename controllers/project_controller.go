@@ -142,9 +142,6 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		return ctrl.Result{}, err
 	}
 
-	msg := fmt.Sprintf("Namespace %s is ready", ns.Name)
-	conditions.MarkTrue(obj, mpasv1alpha1.NamespaceReadyCondition, meta.SucceededReason, msg)
-
 	sa, err := r.reconcileServiceAccount(ctx, obj, ns.GetName())
 	if err != nil {
 		log.Error(err, "failed to create or update service account")
@@ -153,18 +150,12 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		return ctrl.Result{}, err
 	}
 
-	msg = fmt.Sprintf("Service account %s/%s is ready", sa.Namespace, sa.Name)
-	conditions.MarkTrue(obj, mpasv1alpha1.ServiceAccountReadyCondition, meta.SucceededReason, msg)
-
 	if err := r.reconcileClusterRoleBinding(ctx, obj, sa); err != nil {
 		log.Error(err, "failed to create or update cluster role binding")
 		conditions.MarkStalled(obj, mpasv1alpha1.ClusterRoleBindingCreateOrUpdateFailedReason, err.Error())
 		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.ClusterRoleBindingCreateOrUpdateFailedReason, err.Error())
 		return ctrl.Result{}, err
 	}
-
-	msg = fmt.Sprintf("Cluster role binding %s/%s is ready", obj.Name, obj.Name)
-	conditions.MarkTrue(obj, mpasv1alpha1.RBACReadyCondition, meta.SucceededReason, msg)
 
 	repo, err := r.reconcileRepository(ctx, obj)
 	if err != nil {
