@@ -5,64 +5,91 @@
 package controllers
 
 import (
-	"path/filepath"
 	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 	mpasv1alpha1 "github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
-// These tests use Ginkgo (BDD-style Go testing framework). Refer to
-// http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
-
-func TestAPIs(t *testing.T) {
-	RegisterFailHandler(Fail)
-
-	RunSpecs(t, "Controller Suite")
+type testEnv struct {
+	scheme *runtime.Scheme
+	obj    []client.Object
 }
 
-var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+// FakeKubeClientOption defines options to construct a fake kube client. There are some defaults involved.
+// Scheme gets corev1 and v1alpha1 schemes by default. Anything that is passed in will override current
+// defaults.
+type FakeKubeClientOption func(testEnv *testEnv)
 
-	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: true,
+func WithAddToScheme(addToScheme func(s *runtime.Scheme) error) FakeKubeClientOption {
+	return func(testEnv *testEnv) {
+		if err := addToScheme(testEnv.scheme); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func WithObjects(obj ...client.Object) FakeKubeClientOption {
+	return func(testEnv *testEnv) {
+		testEnv.obj = obj
+	}
+}
+
+func (t *testEnv) FakeKubeClient(opts ...FakeKubeClientOption) client.Client {
+	for _, opt := range opts {
+		opt(t)
 	}
 
-	var err error
-	// cfg is defined in this file globally.
-	cfg, err = testEnv.Start()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(cfg).NotTo(BeNil())
+	return fake.NewClientBuilder().WithScheme(t.scheme).WithObjects(t.obj...).Build()
+}
 
-	err = mpasv1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
+var (
+	DefaultProject = &mpasv1alpha1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-project",
+			Namespace: "default",
+		},
+		Spec: mpasv1alpha1.ProjectSpec{
+			Git: gcv1alpha1.RepositorySpec{
+				Provider:       "github",
+				Owner:          "e2e-tester",
+				RepositoryName: "test-project",
+				Credentials: gcv1alpha1.Credentials{
+					SecretRef: corev1.LocalObjectReference{
+						Name: "project-creds",
+					},
+				},
+				Visibility:               "public",
+				Domain:                   "github.com",
+				ExistingRepositoryPolicy: "adopt",
+			},
+		},
+	}
+)
 
-	//+kubebuilder:scaffold:scheme
+var env *testEnv
 
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(k8sClient).NotTo(BeNil())
+func TestMain(m *testing.M) {
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	_ = rbacv1.AddToScheme(scheme)
+	_ = sourcev1.AddToScheme(scheme)
+	_ = kustomizev1.AddToScheme(scheme)
+	_ = mpasv1alpha1.AddToScheme(scheme)
+	_ = gcv1alpha1.AddToScheme(scheme)
 
-})
-
-var _ = AfterSuite(func() {
-	By("tearing down the test environment")
-	err := testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
-})
+	env = &testEnv{
+		scheme: scheme,
+	}
+	m.Run()
+}
