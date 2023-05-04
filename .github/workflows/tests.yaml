@@ -18,7 +18,15 @@ permissions:
 jobs:
   test-linux:
     runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: github.com/open-component-model
     steps:
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.OCMBOT_APP_ID }}
+          private_key: ${{ secrets.OCMBOT_PRIV_KEY }}
       - name: Checkout
         uses: actions/checkout@v3
       - name: Setup Go
@@ -32,5 +40,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - run: git config --global url.https://${{ steps.generate_token.outputs.token }}@github.com/.insteadOf https://github.com/
       - name: Run tests
         run: make test
