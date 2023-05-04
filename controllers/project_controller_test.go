@@ -49,8 +49,9 @@ func TestProjectReconciler(t *testing.T) {
 
 	client := env.FakeKubeClient(WithAddToScheme(mpasv1alpha1.AddToScheme), WithObjects(project, secret, cr))
 	controller := &ProjectReconciler{
-		Client: client,
-		Scheme: env.scheme,
+		Client:          client,
+		Scheme:          env.scheme,
+		ClusterRoleName: cr.Name,
 	}
 
 	_, err := controller.Reconcile(context.Background(), ctrl.Request{

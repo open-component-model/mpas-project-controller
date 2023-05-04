@@ -17,6 +17,16 @@ type ProjectSpec struct {
 	// +required
 	Git gcv1alpha1.RepositorySpec `json:"git"`
 	// +optional
+	// +kubebuilder:default={interval: "5m"}
+	Flux FluxSpec `json:"flux,omitempty"`
+	// +optional
+	Interval metav1.Duration `json:"interval,omitempty"`
+}
+
+type FluxSpec struct {
+	// +optional
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
 	Interval metav1.Duration `json:"interval,omitempty"`
 }
 

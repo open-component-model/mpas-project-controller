@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
@@ -23,9 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 	mpasv1alpha1 "github.com/open-component-model/mpas-project-controller/api/v1alpha1"
@@ -34,12 +35,20 @@ import (
 // ProjectReconciler reconciles a Project object
 type ProjectReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme          *runtime.Scheme
+	ClusterRoleName string
 }
 
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/finalizers,verbs=update
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&mpasv1alpha1.Project{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Complete(r)
+}
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -114,9 +123,7 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		}
 	}()
 
-	result, retErr = r.reconcile(ctx, obj, patchHelper)
-
-	return
+	return r.reconcile(ctx, obj, patchHelper)
 }
 
 func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Project, sp *patch.SerialPatcher) (ctrl.Result, error) {
@@ -190,13 +197,6 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 	return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&mpasv1alpha1.Project{}).
-		Complete(r)
-}
-
 func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1alpha1.Project) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{}
 
@@ -235,9 +235,8 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 }
 
 func (r *ProjectReconciler) reconcileClusterRoleBinding(ctx context.Context, obj *mpasv1alpha1.Project, sa *corev1.ServiceAccount) error {
-	// TODO(@jmickey): Confirm the name of the ClusterRole to bind Project ServiceAccounts.
 	key := types.NamespacedName{
-		Name: "mpas-projects-clusterrole", // - Verify this
+		Name: r.ClusterRoleName, // - Verify this
 	}
 
 	cr := &rbacv1.ClusterRole{}
@@ -316,6 +315,7 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 			Branch: repo.Spec.DefaultBranch,
 		}
 		gitRepo.Spec.SecretRef = (*meta.LocalObjectReference)(&repo.Spec.Credentials.SecretRef)
+		gitRepo.Spec.Interval = obj.Spec.Flux.Interval
 
 		return nil
 	})
@@ -341,9 +341,7 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.Client, kustomization, func() error {
 			kustomization.Spec.Path = path
-			kustomization.Spec.Interval = metav1.Duration{
-				Duration: 5 * time.Minute,
-			}
+			kustomization.Spec.Interval = obj.Spec.Flux.Interval
 			kustomization.Spec.SourceRef = kustomizev1.CrossNamespaceSourceReference{
 				Kind:      gitSource.Kind,
 				Name:      gitSource.Name,

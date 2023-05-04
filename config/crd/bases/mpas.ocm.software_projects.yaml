@@ -35,6 +35,14 @@ spec:
           spec:
             description: ProjectSpec defines the desired state of Project
             properties:
+              flux:
+                default:
+                  interval: 5m
+                properties:
+                  interval:
+                    pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
+                    type: string
+                type: object
               git:
                 description: RepositorySpec defines the desired state of Repository
                 properties:
