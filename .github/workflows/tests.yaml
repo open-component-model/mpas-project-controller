@@ -40,6 +40,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - run: git config --global url.https://${{ steps.generate_token.outputs.token }}@github.com/.insteadOf https://github.com/
+      - run: git config --global url.https://${{ secrets.OCMBOT_APP_ID }}:${{ steps.generate_token.outputs.token }}@github.com/.insteadOf https://github.com/
       - name: Run tests
         run: make test
