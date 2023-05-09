@@ -32,11 +32,16 @@ import (
 	mpasv1alpha1 "github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 )
 
+const (
+	SystemNamespace = "mpas-system"
+)
+
 // ProjectReconciler reconciles a Project object
 type ProjectReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	ClusterRoleName string
+	Scheme           *runtime.Scheme
+	ClusterRoleName  string
+	RepositoryPrefix string
 }
 
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects,verbs=get;list;watch;create;update;patch;delete
@@ -172,15 +177,14 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		return ctrl.Result{}, err
 	}
 
-	gitSource, err := r.reconcileFluxGitRepository(ctx, obj, repo)
-	if err != nil {
+	if err := r.reconcileFluxGitRepository(ctx, obj, repo); err != nil {
 		log.Error(err, "failed to create or update flux git repository")
 		conditions.MarkStalled(obj, mpasv1alpha1.FluxGitRepositoryCreateOrUpdateFailedReason, err.Error())
 		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.FluxGitRepositoryCreateOrUpdateFailedReason, err.Error())
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileFluxKustomizations(ctx, obj, gitSource); err != nil {
+	if err := r.reconcileFluxKustomizations(ctx, obj); err != nil {
 		log.Error(err, "failed to create or update flux kustomizations")
 		conditions.MarkStalled(obj, mpasv1alpha1.FluxKustomizationsCreateOrUpdateFailedReason, err.Error())
 		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.FluxKustomizationsCreateOrUpdateFailedReason, err.Error())
@@ -234,6 +238,7 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 	return sa, nil
 }
 
+// TODO(@mjmickey): Convert to rolebinding. https://github.com/open-component-model/MPAS/pull/34#pullrequestreview-1413301878
 func (r *ProjectReconciler) reconcileClusterRoleBinding(ctx context.Context, obj *mpasv1alpha1.Project, sa *corev1.ServiceAccount) error {
 	key := types.NamespacedName{
 		Name: r.ClusterRoleName, // - Verify this
@@ -246,8 +251,7 @@ func (r *ProjectReconciler) reconcileClusterRoleBinding(ctx context.Context, obj
 
 	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      obj.GetName(),
-			Namespace: obj.GetName(),
+			Name: obj.GetName(),
 		},
 	}
 
@@ -277,14 +281,10 @@ func (r *ProjectReconciler) reconcileClusterRoleBinding(ctx context.Context, obj
 }
 
 func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1alpha1.Project) (*gcv1alpha1.Repository, error) {
-	if err := gcv1alpha1.AddToScheme(r.Scheme); err != nil {
-		return nil, fmt.Errorf("failed to add gcv1alpha1 to scheme: %w", err)
-	}
-
 	repo := &gcv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obj.GetName(),
-			Namespace: obj.GetName(),
+			Namespace: SystemNamespace,
 		},
 	}
 
@@ -301,11 +301,11 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 	return repo, nil
 }
 
-func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj *mpasv1alpha1.Project, repo *gcv1alpha1.Repository) (*sourcev1.GitRepository, error) {
+func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj *mpasv1alpha1.Project, repo *gcv1alpha1.Repository) error {
 	gitRepo := &sourcev1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obj.GetName(),
-			Namespace: obj.GetName(),
+			Namespace: SystemNamespace,
 		},
 	}
 
@@ -321,13 +321,13 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create or update repository: %w", err)
+		return fmt.Errorf("failed to create or update repository: %w", err)
 	}
 
-	return gitRepo, nil
+	return nil
 }
 
-func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj *mpasv1alpha1.Project, gitSource *sourcev1.GitRepository) error {
+func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj *mpasv1alpha1.Project) error {
 	paths := []string{"subscriptions", "targets", "products", "generators"}
 
 	for _, path := range paths {
@@ -335,7 +335,7 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 		kustomization := &kustomizev1.Kustomization{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: obj.GetName(),
+				Namespace: SystemNamespace,
 			},
 		}
 
@@ -343,9 +343,9 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 			kustomization.Spec.Path = path
 			kustomization.Spec.Interval = obj.Spec.Flux.Interval
 			kustomization.Spec.SourceRef = kustomizev1.CrossNamespaceSourceReference{
-				Kind:      gitSource.Kind,
-				Name:      gitSource.Name,
-				Namespace: gitSource.Namespace,
+				Kind:      "GitRepository",
+				Name:      obj.GetName(),
+				Namespace: obj.GetNamespace(),
 			}
 
 			return nil

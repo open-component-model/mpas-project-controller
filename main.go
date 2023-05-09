@@ -38,6 +38,7 @@ func init() {
 	utilruntime.Must(mpasv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme))
 	utilruntime.Must(kustomizev1.AddToScheme(scheme))
+	utilruntime.Must(gcv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

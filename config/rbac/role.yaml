@@ -6,9 +6,24 @@ metadata:
   name: mpas-project-manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - serviceaccounts
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - mpas.ocm.software
   resources:
   - projects
+  - repositories
   verbs:
   - create
   - delete
@@ -31,3 +46,41 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - mpas.ocm.software
+  resources:
+  - subscriptions
+  - targets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  - clusterroles
+  - clusterrolebindings
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - source.toolkit.fluxcd.io
+  - kustomize.toolkit.fluxcd.io
+  resources:
+  - gitrepositories
+  - kustomizations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete

@@ -9,11 +9,12 @@ metadata:
     app.kubernetes.io/part-of: mpas-project-controller
     app.kubernetes.io/managed-by: kustomize
   name: leader-election-rolebinding
+  namespace: mpas-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: mpas-project-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: mpas-project-controller-manager
-  namespace: system
+  name: mpas-project-controller
+  namespace: mpas-system
