@@ -46,21 +46,6 @@ spec:
               git:
                 description: RepositorySpec defines the desired state of Repository
                 properties:
-                  commitTemplate:
-                    description: CommitTemplate defines the commit template to use
-                      when automated commits are made.
-                    properties:
-                      email:
-                        type: string
-                      message:
-                        type: string
-                      name:
-                        type: string
-                    required:
-                    - email
-                    - message
-                    - name
-                    type: object
                   credentials:
                     description: Credentials contains ways of authenticating the creation
                       of a repository.
@@ -109,14 +94,9 @@ spec:
                     type: string
                   visibility:
                     default: private
-                    enum:
-                    - public
-                    - private
-                    - internal
                     type: string
                 required:
                 - credentials
-                - isOrganization
                 - owner
                 - provider
                 - repositoryName
