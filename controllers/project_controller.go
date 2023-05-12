@@ -264,12 +264,14 @@ func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1a
 				return nil, fmt.Errorf("failed to create namespace: %w", err)
 			}
 
-			_ = r.Client.Get(ctx, types.NamespacedName{Name: name}, ns)
+			if err := r.Client.Get(ctx, types.NamespacedName{Name: name}, ns); err != nil {
+				return nil, fmt.Errorf("failed to get namespace: %w", err)
+			}
 
 			return ns, nil
 		}
 
-		return nil, fmt.Errorf("failed to get namespace: %w", err)
+		return nil, fmt.Errorf("error retrieving namespace: %w", err)
 	}
 
 	return ns, nil
@@ -292,7 +294,9 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 		return nil, fmt.Errorf("failed to create or update service account: %w", err)
 	}
 
-	_ = r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, sa)
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, sa); err != nil {
+		return nil, fmt.Errorf("error retrieving service account: %w", err)
+	}
 
 	return sa, nil
 }
@@ -343,7 +347,9 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 		return nil, fmt.Errorf("failed to create or update role: %w", err)
 	}
 
-	_ = r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, role)
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, role); err != nil {
+		return nil, fmt.Errorf("error retrieving role: %w", err)
+	}
 
 	return role, nil
 }
@@ -446,9 +452,15 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 		return nil, fmt.Errorf("failed to create or update role binding: %w", err)
 	}
 
-	_ = r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, mpasRoleBinding)
-	_ = r.Client.Get(ctx, types.NamespacedName{Name: name + "-clusterrole", Namespace: name}, projectRoleBindingCR)
-	_ = r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, projectRoleBinding)
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, mpasRoleBinding); err != nil {
+		return nil, fmt.Errorf("error retrieving role binding: %w", err)
+	}
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: name + "-clusterrole", Namespace: name}, projectRoleBindingCR); err != nil {
+		return nil, fmt.Errorf("error retrieving role binding: %w", err)
+	}
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, projectRoleBinding); err != nil {
+		return nil, fmt.Errorf("error retrieving role binding: %w", err)
+	}
 
 	return []*rbacv1.RoleBinding{mpasRoleBinding, projectRoleBindingCR, projectRoleBinding}, nil
 }
@@ -481,7 +493,9 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 		return nil, fmt.Errorf("failed to create or update repository: %w", err)
 	}
 
-	_ = r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, repo)
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, repo); err != nil {
+		return nil, fmt.Errorf("error retrieving repository: %w", err)
+	}
 
 	return repo, nil
 }
@@ -510,7 +524,9 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 		return nil, fmt.Errorf("failed to create or update repository: %w", err)
 	}
 
-	_ = r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, gitRepo)
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, gitRepo); err != nil {
+		return nil, fmt.Errorf("error retrieving flux repository: %w", err)
+	}
 
 	return gitRepo, nil
 }
@@ -545,7 +561,9 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 			return nil, fmt.Errorf("failed to create or update kustomization: %w", err)
 		}
 
-		_ = r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, kustomization)
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, kustomization); err != nil {
+			return nil, fmt.Errorf("error retrieving kustomization: %w", err)
+		}
 
 		kustomizations = append(kustomizations, kustomization)
 	}
