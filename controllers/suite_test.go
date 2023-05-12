@@ -61,9 +61,8 @@ var (
 		},
 		Spec: mpasv1alpha1.ProjectSpec{
 			Git: gcv1alpha1.RepositorySpec{
-				Provider:       "github",
-				Owner:          "e2e-tester",
-				RepositoryName: "test-project",
+				Provider: "github",
+				Owner:    "e2e-tester",
 				Credentials: gcv1alpha1.Credentials{
 					SecretRef: corev1.LocalObjectReference{
 						Name: "project-creds",
@@ -73,6 +72,7 @@ var (
 				Domain:                   "github.com",
 				ExistingRepositoryPolicy: "adopt",
 			},
+			Prune: true,
 		},
 	}
 )

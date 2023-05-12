@@ -12,6 +12,13 @@ import (
 	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 )
 
+const (
+	ProjectFinalizer = "finalizers.mpas.ocm.software"
+)
+
+// ExistingRepositoryPolicy defines what to do in case a requested repository already exists.
+type ExistingRepositoryPolicy string
+
 // ProjectSpec defines the desired state of Project
 type ProjectSpec struct {
 	// +required
@@ -19,6 +26,9 @@ type ProjectSpec struct {
 	// +optional
 	// +kubebuilder:default={interval: "5m"}
 	Flux FluxSpec `json:"flux,omitempty"`
+	// +optional
+	// +kubebuilder:default=true
+	Prune bool `json:"prune,omitempty"`
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
 }
@@ -40,6 +50,23 @@ type ProjectStatus struct {
 	// ObservedGeneration is the last reconciled generation of the resource.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Inventory contains the list of Kubernetes resource object references that
+	// have been successfully applied.
+	// +optional
+	Inventory *ResourceInventory `json:"inventory,omitempty"`
+
+	// RepositoryRef contains the reference to the repository resource that has been created by the project controller.
+	// +optional
+	RepositoryRef *RepositoryRef `json:"repositoryRef,omitempty"`
+}
+
+// RepositoryRef contains the reference to the repository resource that has been created by the project controller.
+type RepositoryRef struct {
+	// Name is the name of the repository resource.
+	Name string `json:"name"`
+	// Namespace is the namespace of the repository resource.
+	Namespace string `json:"namespace"`
 }
 
 //+kubebuilder:object:root=true
@@ -67,6 +94,10 @@ func (in *Project) SetConditions(conditions []metav1.Condition) {
 // GetRequeueAfter returns the requeue time of the Project.
 func (in *Project) GetRequeueAfter() time.Duration {
 	return in.Spec.Interval.Duration
+}
+
+func (in *Project) GetNameWithPrefix(prefix string) string {
+	return prefix + "-" + in.Name
 }
 
 //+kubebuilder:object:root=true

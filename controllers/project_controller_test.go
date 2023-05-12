@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	mpasv1alpha1 "github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 )
@@ -47,6 +48,8 @@ func TestProjectReconciler(t *testing.T) {
 		},
 	}
 
+	controllerutil.AddFinalizer(project, mpasv1alpha1.ProjectFinalizer)
+
 	client := env.FakeKubeClient(WithAddToScheme(mpasv1alpha1.AddToScheme), WithObjects(project, secret, cr))
 	controller := &ProjectReconciler{
 		Client:          client,
@@ -55,6 +58,15 @@ func TestProjectReconciler(t *testing.T) {
 	}
 
 	_, err := controller.Reconcile(context.Background(), ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: project.Namespace,
+			Name:      project.Name,
+		},
+	})
+	require.NoError(t, err)
+
+	// Reconcile twice because the project will be requeued to wait for resources to be created.
+	_, err = controller.Reconcile(context.Background(), ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: project.Namespace,
 			Name:      project.Name,
