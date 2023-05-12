@@ -9,12 +9,12 @@ import (
 	"errors"
 	"fmt"
 
-	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/fluxcd/pkg/runtime/patch"
 	rreconcile "github.com/fluxcd/pkg/runtime/reconcile"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -44,14 +44,7 @@ type ProjectReconciler struct {
 	Scheme                *runtime.Scheme
 	ClusterRoleName       string
 	Prefix                string
-	DefaultCommitTemplate CommitTemplate
-}
-
-// CommitTemplate defines the default commit template for a project if one is not provided in the spec.
-type CommitTemplate struct {
-	Name    string
-	Email   string
-	Message string
+	DefaultCommitTemplate mpasv1alpha1.CommitTemplate
 }
 
 //+kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;secrets,verbs=get;list;watch;create;update;patch;delete
@@ -294,10 +287,6 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 		return nil, fmt.Errorf("failed to create or update service account: %w", err)
 	}
 
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, sa); err != nil {
-		return nil, fmt.Errorf("error retrieving service account: %w", err)
-	}
-
 	return sa, nil
 }
 
@@ -345,10 +334,6 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create or update role: %w", err)
-	}
-
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, role); err != nil {
-		return nil, fmt.Errorf("error retrieving role: %w", err)
 	}
 
 	return role, nil
@@ -452,16 +437,6 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 		return nil, fmt.Errorf("failed to create or update role binding: %w", err)
 	}
 
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, mpasRoleBinding); err != nil {
-		return nil, fmt.Errorf("error retrieving role binding: %w", err)
-	}
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: name + "-clusterrole", Namespace: name}, projectRoleBindingCR); err != nil {
-		return nil, fmt.Errorf("error retrieving role binding: %w", err)
-	}
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: name}, projectRoleBinding); err != nil {
-		return nil, fmt.Errorf("error retrieving role binding: %w", err)
-	}
-
 	return []*rbacv1.RoleBinding{mpasRoleBinding, projectRoleBindingCR, projectRoleBinding}, nil
 }
 
@@ -493,10 +468,6 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 		return nil, fmt.Errorf("failed to create or update repository: %w", err)
 	}
 
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, repo); err != nil {
-		return nil, fmt.Errorf("error retrieving repository: %w", err)
-	}
-
 	return repo, nil
 }
 
@@ -524,10 +495,6 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 		return nil, fmt.Errorf("failed to create or update repository: %w", err)
 	}
 
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, gitRepo); err != nil {
-		return nil, fmt.Errorf("error retrieving flux repository: %w", err)
-	}
-
 	return gitRepo, nil
 }
 
@@ -553,16 +520,14 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 				Name:      prefixedName,
 				Namespace: obj.GetNamespace(),
 			}
+			kustomization.Spec.ServiceAccountName = prefixedName
+			kustomization.Spec.TargetNamespace = prefixedName
 
 			return nil
 		})
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create or update kustomization: %w", err)
-		}
-
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: SystemNamespace}, kustomization); err != nil {
-			return nil, fmt.Errorf("error retrieving kustomization: %w", err)
 		}
 
 		kustomizations = append(kustomizations, kustomization)

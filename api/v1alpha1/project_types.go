@@ -40,6 +40,13 @@ type FluxSpec struct {
 	Interval metav1.Duration `json:"interval,omitempty"`
 }
 
+// CommitTemplate defines the default commit template for a project if one is not provided in the spec.
+type CommitTemplate struct {
+	Name    string
+	Email   string
+	Message string
+}
+
 // ProjectStatus defines the observed state of Project
 type ProjectStatus struct {
 	// +optional

@@ -19,8 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 
 	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 	mpasv1alpha1 "github.com/open-component-model/mpas-project-controller/api/v1alpha1"
@@ -101,6 +101,11 @@ func main() {
 		Scheme:          mgr.GetScheme(),
 		ClusterRoleName: clusterRoleName,
 		Prefix:          prefix,
+		DefaultCommitTemplate: mpasv1alpha1.CommitTemplate{
+			Name:    defaultCommitName,
+			Email:   defaultCommitEmail,
+			Message: defaultCommitMessage,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Project")
 		os.Exit(1)
