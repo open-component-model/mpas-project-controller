@@ -554,7 +554,7 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 }
 
 func (r *ProjectReconciler) finalize(ctx context.Context, obj *mpasv1alpha1.Project) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 	var retErr error
 	if obj.Spec.Prune &&
 		obj.Status.Inventory != nil &&
@@ -565,13 +565,13 @@ func (r *ProjectReconciler) finalize(ctx context.Context, obj *mpasv1alpha1.Proj
 			existingObj := object.DeepCopy()
 			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(object), existingObj); err != nil {
 				if !apierrors.IsNotFound(err) {
-					log.Error(err, "failed to get object for deletion")
+					logger.Error(err, "failed to get object for deletion")
 					errors.Join(retErr, err)
 				}
 			}
 
 			if err := r.Client.Delete(ctx, object); err != nil {
-				log.Error(err, "failed to delete object", "object", object)
+				logger.Error(err, "failed to delete object", "object", object)
 				errors.Join(retErr, err)
 			}
 		}
@@ -587,7 +587,7 @@ func (r *ProjectReconciler) finalize(ctx context.Context, obj *mpasv1alpha1.Proj
 }
 
 func (r *ProjectReconciler) prune(ctx context.Context, obj *mpasv1alpha1.Project, staleObjects []*unstructured.Unstructured) error {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 	var retErr error
 
 	if !obj.Spec.Prune {
@@ -598,13 +598,13 @@ func (r *ProjectReconciler) prune(ctx context.Context, obj *mpasv1alpha1.Project
 		existingObj := object.DeepCopy()
 		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(object), existingObj); err != nil {
 			if !apierrors.IsNotFound(err) {
-				log.Error(err, "failed to get object for deletion")
+				logger.Error(err, "failed to get object for deletion")
 				errors.Join(retErr, err)
 			}
 		}
 
 		if err := r.Client.Delete(ctx, object); err != nil {
-			log.Error(err, "failed to delete object", "object", object)
+			logger.Error(err, "failed to delete object", "object", object)
 			errors.Join(retErr, err)
 		}
 	}

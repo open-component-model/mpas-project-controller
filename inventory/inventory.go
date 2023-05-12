@@ -35,7 +35,7 @@ func Add(inv *mpasv1alpha1.ResourceInventory, objs ...runtime.Object) error {
 
 		entry := mpasv1alpha1.ResourceRef{
 			ID:      objMetadata.String(),
-			Version: obj.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+			Version: obj.GetObjectKind().GroupVersionKind().GroupVersion().Version,
 		}
 		inv.Entries = append(inv.Entries, entry)
 	}
