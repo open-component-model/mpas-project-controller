@@ -9,21 +9,55 @@ rules:
   - ""
   resources:
   - namespaces
-  - serviceaccounts
   - secrets
+  - serviceaccounts
   verbs:
+  - create
+  - delete
   - get
   - list
-  - watch
-  - create
-  - update
   - patch
+  - update
+  - watch
+- apiGroups:
+  - delivery.ocm.software
+  resources:
+  - componentsubscriptions
+  - componentversions
+  - configurations
+  - localizations
+  verbs:
+  - create
   - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kustomize.toolkit.fluxcd.io
+  - source.toolkit.fluxcd.io
+  resources:
+  - gitrepositories
+  - kustomizations
+  - ocirepositories
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - mpas.ocm.software
   resources:
+  - productdeploymentgenerators
+  - productdeploymentpipelines
+  - productdeployments
   - projects
   - repositories
+  - targets
   verbs:
   - create
   - delete
@@ -50,7 +84,6 @@ rules:
   - mpas.ocm.software
   resources:
   - subscriptions
-  - targets
   verbs:
   - get
   - list
@@ -58,29 +91,22 @@ rules:
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
-  - roles
-  - rolebindings
-  - clusterroles
   - clusterrolebindings
+  - clusterroles
   verbs:
   - get
   - list
   - watch
-  - create
-  - update
-  - patch
-  - delete
 - apiGroups:
-  - source.toolkit.fluxcd.io
-  - kustomize.toolkit.fluxcd.io
+  - rbac.authorization.k8s.io
   resources:
-  - gitrepositories
-  - kustomizations
+  - rolebindings
+  - roles
   verbs:
+  - create
+  - delete
   - get
   - list
-  - watch
-  - create
-  - update
   - patch
-  - delete
+  - update
+  - watch

@@ -44,7 +44,13 @@ type ProjectReconciler struct {
 	RepositoryPrefix string
 }
 
-//+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;secrets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=get;list;watch
+//+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects;targets;repositories;productdeployments;productdeploymentgenerators;productdeploymentpipelines,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=mpas.ocm.software,resources=subscriptions,verbs=get;list;watch
+//+kubebuilder:rbac:groups=delivery.ocm.software,resources=componentsubscriptions;componentversions;configurations;localizations,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=source.toolkit.fluxcd.io;kustomize.toolkit.fluxcd.io,resources=gitrepositories;ocirepositories;kustomizations,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/finalizers,verbs=update
 

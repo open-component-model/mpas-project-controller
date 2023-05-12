@@ -46,6 +46,21 @@ spec:
               git:
                 description: RepositorySpec defines the desired state of Repository
                 properties:
+                  commitTemplate:
+                    description: CommitTemplate defines the commit template to use
+                      when automated commits are made.
+                    properties:
+                      email:
+                        type: string
+                      message:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - email
+                    - message
+                    - name
+                    type: object
                   credentials:
                     description: Credentials contains ways of authenticating the creation
                       of a repository.
@@ -90,19 +105,24 @@ spec:
                     type: string
                   provider:
                     type: string
-                  repositoryName:
-                    type: string
                   visibility:
                     default: private
+                    enum:
+                    - public
+                    - private
+                    - internal
                     type: string
                 required:
                 - credentials
+                - isOrganization
                 - owner
                 - provider
-                - repositoryName
                 type: object
               interval:
                 type: string
+              prune:
+                default: true
+                type: boolean
             required:
             - git
             type: object
@@ -177,11 +197,51 @@ spec:
                   - type
                   type: object
                 type: array
+              inventory:
+                description: Inventory contains the list of Kubernetes resource object
+                  references that have been successfully applied.
+                properties:
+                  entries:
+                    description: Entries of Kubernetes resource object references.
+                    items:
+                      description: ResourceRef contains the information required to
+                        locate a resource within a cluster.
+                      properties:
+                        id:
+                          description: ID is the string representation of the Kubernetes
+                            resource object's metadata, in the format '<namespace>_<name>_<group>_<kind>'.
+                          type: string
+                        v:
+                          description: Version is the API version of the Kubernetes
+                            resource object's kind.
+                          type: string
+                      required:
+                      - id
+                      - v
+                      type: object
+                    type: array
+                required:
+                - entries
+                type: object
               observedGeneration:
                 description: ObservedGeneration is the last reconciled generation
                   of the resource.
                 format: int64
                 type: integer
+              repositoryRef:
+                description: RepositoryRef contains the reference to the repository
+                  resource that has been created by the project controller.
+                properties:
+                  name:
+                    description: Name is the name of the repository resource.
+                    type: string
+                  namespace:
+                    description: Namespace is the namespace of the repository resource.
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
             type: object
         type: object
     served: true
