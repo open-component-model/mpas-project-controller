@@ -9,6 +9,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/fluxcd/pkg/apis/meta"
 	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 )
 
@@ -63,15 +64,7 @@ type ProjectStatus struct {
 
 	// RepositoryRef contains the reference to the repository resource that has been created by the project controller.
 	// +optional
-	RepositoryRef *RepositoryRef `json:"repositoryRef,omitempty"`
-}
-
-// RepositoryRef contains the reference to the repository resource that has been created by the project controller.
-type RepositoryRef struct {
-	// Name is the name of the repository resource.
-	Name string `json:"name"`
-	// Namespace is the namespace of the repository resource.
-	Namespace string `json:"namespace"`
+	RepositoryRef *meta.NamespacedObjectReference `json:"repositoryRef,omitempty"`
 }
 
 // +kubebuilder:object:root=true

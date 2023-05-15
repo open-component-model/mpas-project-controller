@@ -98,22 +98,19 @@ func Diff(source *mpasv1alpha1.ResourceInventory, target *mpasv1alpha1.ResourceI
 		return ""
 	}
 
-	objects := make([]*unstructured.Unstructured, 0)
+	var objects []*unstructured.Unstructured
+
 	aList, err := ListMetadata(source)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list metadate for source: %w", err)
 	}
 
 	bList, err := ListMetadata(target)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list metadate for target: %w", err)
 	}
 
 	list := aList.Diff(bList)
-	if len(list) == 0 {
-		return objects, nil
-	}
-
 	for _, metadata := range list {
 		u := &unstructured.Unstructured{}
 		u.SetGroupVersionKind(schema.GroupVersionKind{

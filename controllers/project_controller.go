@@ -61,6 +61,13 @@ type ProjectReconciler struct {
 func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mpasv1alpha1.Project{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&corev1.Namespace{}).
+		Owns(&corev1.ServiceAccount{}).
+		Owns(&rbacv1.Role{}).
+		Owns(&rbacv1.RoleBinding{}).
+		Owns(&gcv1alpha1.Repository{}).
+		Owns(&sourcev1.GitRepository{}).
+		Owns(&kustomizev1.Kustomization{}).
 		Complete(r)
 }
 
@@ -82,7 +89,7 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 	defer func() {
 		if err := r.finalizeStatus(ctx, obj, patchHelper); err != nil {
-			errors.Join(retErr, err)
+			retErr = errors.Join(retErr, err)
 		}
 	}()
 
@@ -168,7 +175,7 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		return ctrl.Result{}, fmt.Errorf("error reconciling repository: %w", err)
 	}
 
-	obj.Status.RepositoryRef = &mpasv1alpha1.RepositoryRef{
+	obj.Status.RepositoryRef = &meta.NamespacedObjectReference{
 		Name:      repo.GetName(),
 		Namespace: repo.GetNamespace(),
 	}
@@ -358,6 +365,12 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, mpasRoleBinding, func() error {
+		if obj.GetNamespace() == SystemNamespace && mpasRoleBinding.ObjectMeta.CreationTimestamp.IsZero() {
+			if err := controllerutil.SetOwnerReference(obj, mpasRoleBinding, r.Scheme); err != nil {
+				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
+			}
+		}
+
 		mpasRoleBinding.Subjects = []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
@@ -450,6 +463,12 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+		if obj.GetNamespace() == SystemNamespace && repo.ObjectMeta.CreationTimestamp.IsZero() {
+			if err := controllerutil.SetOwnerReference(obj, repo, r.Scheme); err != nil {
+				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
+			}
+		}
+
 		// obj.Spec.Git matches the Repository spec, so we can just assign it.
 		repo.Spec = obj.Spec.Git
 
@@ -481,6 +500,11 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, gitRepo, func() error {
+		if obj.GetNamespace() == SystemNamespace && gitRepo.ObjectMeta.CreationTimestamp.IsZero() {
+			if err := controllerutil.SetOwnerReference(obj, gitRepo, r.Scheme); err != nil {
+				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
+			}
+		}
 		gitRepo.Spec.URL = repo.GetRepositoryURL()
 		gitRepo.Spec.Reference = &sourcev1.GitRepositoryRef{
 			Branch: repo.Spec.DefaultBranch,
@@ -513,6 +537,12 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.Client, kustomization, func() error {
+			if obj.GetNamespace() == SystemNamespace && kustomization.ObjectMeta.CreationTimestamp.IsZero() {
+				if err := controllerutil.SetOwnerReference(obj, kustomization, r.Scheme); err != nil {
+					return fmt.Errorf("failed to set owner reference on namespace: %w", err)
+				}
+			}
+
 			kustomization.Spec.Path = path
 			kustomization.Spec.Interval = obj.Spec.Flux.Interval
 			kustomization.Spec.SourceRef = kustomizev1.CrossNamespaceSourceReference{
@@ -545,17 +575,16 @@ func (r *ProjectReconciler) finalize(ctx context.Context, obj *mpasv1alpha1.Proj
 		objects, _ := inventory.List(obj.Status.Inventory)
 
 		for _, object := range objects {
-			existingObj := object.DeepCopy()
-			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(object), existingObj); err != nil {
+			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(object), object); err != nil {
 				if !apierrors.IsNotFound(err) {
 					logger.Error(err, "failed to get object for deletion")
-					errors.Join(retErr, err)
+					retErr = errors.Join(retErr, err)
 				}
 			}
 
 			if err := r.Client.Delete(ctx, object); err != nil {
 				logger.Error(err, "failed to delete object", "object", object)
-				errors.Join(retErr, err)
+				retErr = errors.Join(retErr, err)
 			}
 		}
 
@@ -578,17 +607,16 @@ func (r *ProjectReconciler) prune(ctx context.Context, obj *mpasv1alpha1.Project
 	}
 
 	for _, object := range staleObjects {
-		existingObj := object.DeepCopy()
-		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(object), existingObj); err != nil {
+		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(object), object); err != nil {
 			if !apierrors.IsNotFound(err) {
 				logger.Error(err, "failed to get object for deletion")
-				errors.Join(retErr, err)
+				retErr = errors.Join(retErr, err)
 			}
 		}
 
 		if err := r.Client.Delete(ctx, object); err != nil {
 			logger.Error(err, "failed to delete object", "object", object)
-			errors.Join(retErr, err)
+			retErr = errors.Join(retErr, err)
 		}
 	}
 

@@ -245,14 +245,14 @@ spec:
                   resource that has been created by the project controller.
                 properties:
                   name:
-                    description: Name is the name of the repository resource.
+                    description: Name of the referent.
                     type: string
                   namespace:
-                    description: Namespace is the namespace of the repository resource.
+                    description: Namespace of the referent, when not specified it
+                      acts as LocalObjectReference.
                     type: string
                 required:
                 - name
-                - namespace
                 type: object
             type: object
         type: object
