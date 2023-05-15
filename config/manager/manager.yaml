@@ -9,17 +9,17 @@ metadata:
     app.kubernetes.io/created-by: mpas-project-controller
     app.kubernetes.io/part-of: mpas-project-controller
     app.kubernetes.io/managed-by: kustomize
-  name: system
+  name: mpas-system
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mpas-project-controller-manager
-  namespace: system
+  name: mpas-project-controller
+  namespace: mpas-system
   labels:
     control-plane: mpas-project-controller-manager
     app.kubernetes.io/name: deployment
-    app.kubernetes.io/instance: mpas-project-controller-manager
+    app.kubernetes.io/instance: mpas-project-controller
     app.kubernetes.io/component: manager
     app.kubernetes.io/created-by: mpas-project-controller
     app.kubernetes.io/part-of: mpas-project-controller
@@ -43,7 +43,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: open-component-model/mpas-project-controller
+        image: ghcr.io/open-component-model/mpas-project-controller
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
@@ -71,5 +71,5 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-      serviceAccountName: mpas-project-controller-manager
+      serviceAccountName: mpas-project-controller
       terminationGracePeriodSeconds: 10

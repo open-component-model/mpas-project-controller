@@ -19,6 +19,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+
+	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 	mpasv1alpha1 "github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 	"github.com/open-component-model/mpas-project-controller/controllers"
 	//+kubebuilder:scaffold:imports
@@ -33,6 +37,9 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(mpasv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(sourcev1.AddToScheme(scheme))
+	utilruntime.Must(kustomizev1.AddToScheme(scheme))
+	utilruntime.Must(gcv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -40,11 +47,23 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var clusterRoleName string
+	var prefix string
+	var defaultCommitName string
+	var defaultCommitEmail string
+	var defaultCommitMessage string
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&clusterRoleName, "cluster-role-name", "mpas-projects-clusterrole", "The name of the cluster role to use for project ServiceAccounts.")
+	flag.StringVar(&prefix, "prefix", "mpas", "The prefix to use for all resources and Git repositories created by the controller.")
+	flag.StringVar(&defaultCommitName, "default-commit-name", "MPAS System", "The name to use for automated commits if one is not provided in the Project spec.")
+	flag.StringVar(&defaultCommitEmail, "default-commit-email", "automated@ocm.software", "The email address to use for automated commits if one is not provided in the Project spec.")
+	flag.StringVar(&defaultCommitMessage, "default-commit-message", "Automated commit by MPAS Project Controller", "The commit message to use for automated commits if one is not provided in the Project spec.")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -78,8 +97,15 @@ func main() {
 	}
 
 	if err = (&controllers.ProjectReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		ClusterRoleName: clusterRoleName,
+		Prefix:          prefix,
+		DefaultCommitTemplate: mpasv1alpha1.CommitTemplate{
+			Name:    defaultCommitName,
+			Email:   defaultCommitEmail,
+			Message: defaultCommitMessage,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Project")
 		os.Exit(1)

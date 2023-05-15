@@ -10,6 +10,7 @@ metadata:
     app.kubernetes.io/part-of: mpas-project-controller
     app.kubernetes.io/managed-by: kustomize
   name: mpas-project-leader-election-role
+  namespace: mpas-system
 rules:
 - apiGroups:
   - ""
