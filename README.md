@@ -1,14 +1,14 @@
 # MPAS Project Controller
 
-The MPAS Project controller is part of the Multi-Platform Automation System (MPAS). It is a Kubernetes controller that manages the lifecycle of MPAS projects. It is responsible for creating and deleting projects, as well as managing the project's resources. MPAS, and the Project Controller, is designed to be used with the [Open Component Model](https://ocm.software) and [Flux](https://fluxcd.io).
+The MPAS Project controller is part of the Multi-Platform Automation System (MPAS). It is a Kubernetes controller that manages the lifecycle of MPAS projects. It is responsible for creating and deleting projects and managing the project's resources. MPAS, and the Project Controller, are designed to be used with the [Open Component Model](https://ocm.software) and [Flux](https://fluxcd.io).
 
 The project controller provides a Project Custom Resource Definition (CRD) to enable the following features:
 
 - Create a Kubernetes namespace for project resources.
 - Create a Project ServiceAccount and associated RBAC.
-- Create a Git repository for the project. GihHub, GitLab, and Gitea are supported.
-  - The repoisitory is bootstrapped with the necessary folder structure and files to enable Flux to manage the project.
-  - Project owners are able to specify `maintainers` for the repoisitory, which will automatically be added to the `CODEOWNERS` file.
+- Create a git repository for the project. GitHub, GitLab, and Gitea are supported.
+  - The repository is bootstrapped with the necessary folder structure and files to enable Flux to manage the project.
+  - Project owners can specify `maintainers` for the repository, which will automatically be added to the `CODEOWNERS` file.
 - A Flux GitRepository source is created for the project Git repository created above.
 - Flux Kustomizations are configured for each of the bootstrapped folders in the project Git repository.
 
@@ -16,22 +16,23 @@ The project controller provides a Project Custom Resource Definition (CRD) to en
 
 Prerequisites:
 
+- Docker, KIND, and kubectl are required.
 - Create a kind cluster: `kind create cluster`
 - Install the `git-controller`: see [open-component-model/git-controller](https://github.com/open-component-model/git-controller)
-- Install Flux: `flux install`
+- Install Flux by running `flux install`
 - Install the Project Controller
 
-A `Tiltfile` is provided to make it easy to run the project controller locally. To run the project controller locally:
+Alternatively, a `Tiltfile` is provided to make it easy to run the project controller locally. To run the project controller locally:
 
 - Install [Tilt](https://tilt.dev)
 - Clone the `git-controller` into the parent directory of the `mpas-project-controller`: `git clone https://github.com/open-component-model/git-controller ../git-controller`
 - Export `GITHUB_USER`, `GITHUB_EMAIL`, and `GITHUB_TOKEN` environment variables. `repo` permissions are required for the `GITHUB_TOKEN`.
-- Docker and KIND are required. Create a kind cluster: `kind create cluster`.
+- Create a kind cluster: `kind create cluster`.
 - Run `tilt up` from the `mpas-project-controller` directory.
 
 ---
 
-In this tutorial we'll create a project called "my-project" that will be managed by Flux. A GitHub repository will be created for the project, and Flux will be configured to manage the project's resources.
+In this tutorial, we'll create a project called "my-project" that will be managed by Flux. A GitHub repository will be created for the project, and Flux will be configured to manage the project's resources.
 
 To get started create a `Secret` with your GitHub credentials:
 
