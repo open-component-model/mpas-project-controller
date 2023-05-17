@@ -22,19 +22,11 @@ Prerequisites:
 - Install Flux by running `flux install`
 - Install the Project Controller
 
-Alternatively, a `Tiltfile` is provided to make it easy to run the project controller locally. To run the project controller locally:
-
-- Install [Tilt](https://tilt.dev)
-- Clone the `git-controller` into the parent directory of the `mpas-project-controller`: `git clone https://github.com/open-component-model/git-controller ../git-controller`
-- Export `GITHUB_USER`, `GITHUB_EMAIL`, and `GITHUB_TOKEN` environment variables. `repo` permissions are required for the `GITHUB_TOKEN`.
-- Create a kind cluster: `kind create cluster`.
-- Run `tilt up` from the `mpas-project-controller` directory.
-
 ---
 
 In this tutorial, we'll create a project called "my-project" that will be managed by Flux. A GitHub repository will be created for the project, and Flux will be configured to manage the project's resources.
 
-To get started create a `Secret` with your GitHub credentials:
+To get started create a `Secret` with your GitHub credentials. The password should be a [personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) with `repo` permissions. The username and password should be base64 encoded.
 
 ```yaml
 # github-creds.yaml
@@ -92,9 +84,43 @@ The project controller will create a namespace for the project, a service accoun
 View the resources created by the project controller:
 
 ```bash
-kubectl get ns my-project
-kubectl get sa,rolebinding -n my-project
+kubectl get ns mpas-my-project
+kubectl get sa,rolebinding -n mpas-my-project
 kubectl get repositories,gitrepositories,kustomizations,rolebindings -n mpas-system
+```
+
+Expected output:
+
+```bash
+$ kubectl get ns mpas-my-project
+NAME                STATUS   AGE
+mpas-my-project   Active   1m
+
+$ kubectl get sa,rolebinding -n mpas-my-project
+NAME                               SECRETS   AGE
+serviceaccount/default             0         1m
+serviceaccount/mpas-my-project   0         1m
+
+NAME                                                                  ROLE                                    AGE
+rolebinding.rbac.authorization.k8s.io/mpas-my-project               Role/mpas-my-project                  1m
+rolebinding.rbac.authorization.k8s.io/mpas-my-project-clusterrole   ClusterRole/mpas-projects-clusterrole   1m
+
+$ kubectl get repositories,gitrepositories,kustomizations,rolebindings -n mpas-system
+NAME                                             AGE
+repository.mpas.ocm.software/mpas-my-project   1m
+
+NAME                                                       URL                           AGE   READY   STATUS
+gitrepository.source.toolkit.fluxcd.io/mpas-my-project   https://github.com/open-component-model/mpas-my-project   1m    True   stored artifact for revision 'main@sha1:112e4b27aa05b114a3adfe1b16d81bf49706ab42'
+
+NAME                                                                        AGE   READY   STATUS
+kustomization.kustomize.toolkit.fluxcd.io/mpas-my-project-generators      1m    True   Source is not ready, artifact not found
+kustomization.kustomize.toolkit.fluxcd.io/mpas-my-project-products        1m    True   Source is not ready, artifact not found
+kustomization.kustomize.toolkit.fluxcd.io/mpas-my-project-subscriptions   1m    True   Source is not ready, artifact not found
+kustomization.kustomize.toolkit.fluxcd.io/mpas-my-project-targets         1m    True   Source is not ready, artifact not found
+
+NAME                                                                ROLE                                     AGE
+rolebinding.rbac.authorization.k8s.io/leader-election-rolebinding   Role/mpas-project-leader-election-role   1m
+rolebinding.rbac.authorization.k8s.io/mpas-my-project             ClusterRole/mpas-projects-clusterrole    1m
 ```
 
 A GitHub repository should also exist at `<username>/my-project`.
@@ -102,6 +128,18 @@ A GitHub repository should also exist at `<username>/my-project`.
 ## Testing
 
 Run tests with make: `make test`
+
+## Development
+
+A `Tiltfile` is provided to make it easy to run the project controller locally. To run the project controller locally:
+
+- Install [Tilt](https://tilt.dev)
+- Clone the `git-controller` into the parent directory of the `mpas-project-controller`: `git clone https://github.com/open-component-model/git-controller ../git-controller`
+- Export `GITHUB_USER`, `GITHUB_EMAIL`, and `GITHUB_TOKEN` environment variables. `repo` permissions are required for the `GITHUB_TOKEN`.
+- Create a kind cluster: `kind create cluster`.
+- Run `tilt up` from the `mpas-project-controller` directory.
+
+Changes made during development will be automatically synced to the pod running in your local cluster via Tilt.
 
 ## Support, Feedback, Contributing
 
