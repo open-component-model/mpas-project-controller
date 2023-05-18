@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,6 +37,7 @@ import (
 
 const (
 	SystemNamespace = "mpas-system"
+	ValuesYAML      = "products/**/values.yaml"
 )
 
 // ProjectReconciler reconciles a Project object
@@ -505,6 +507,7 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
 			}
 		}
+		gitRepo.Spec.Ignore = pointer.String(ValuesYAML)
 		gitRepo.Spec.URL = repo.GetRepositoryURL()
 		gitRepo.Spec.Reference = &sourcev1.GitRepositoryRef{
 			Branch: repo.Spec.DefaultBranch,
