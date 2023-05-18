@@ -36,8 +36,9 @@ import (
 )
 
 const (
-	SystemNamespace = "mpas-system"
-	ValuesYAML      = "products/**/values.yaml"
+	SystemNamespace              = "mpas-system"
+	ControllerServiceAccountName = "mpas-project-controller"
+	ValuesYAML                   = "products/**/values.yaml"
 )
 
 // ProjectReconciler reconciles a Project object
@@ -145,7 +146,7 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		return ctrl.Result{}, fmt.Errorf("error reconciling namespace: %w", err)
 	}
 
-	sa, err := r.reconcileServiceAccount(ctx, obj, ns.GetName())
+	sa, err := r.reconcileServiceAccount(ctx, obj)
 	if err != nil {
 		logger.Error(err, "failed to reconcile service account")
 		conditions.MarkStalled(obj, mpasv1alpha1.ServiceAccountCreateOrUpdateFailedReason, err.Error())
@@ -279,7 +280,7 @@ func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1a
 	return ns, nil
 }
 
-func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mpasv1alpha1.Project, namespace string) (*corev1.ServiceAccount, error) {
+func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mpasv1alpha1.Project) (*corev1.ServiceAccount, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -553,7 +554,7 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 				Name:      prefixedName,
 				Namespace: obj.GetNamespace(),
 			}
-			kustomization.Spec.ServiceAccountName = prefixedName
+			kustomization.Spec.ServiceAccountName = ControllerServiceAccountName
 			kustomization.Spec.TargetNamespace = prefixedName
 
 			return nil
