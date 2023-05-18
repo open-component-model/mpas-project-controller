@@ -3,6 +3,7 @@ module github.com/open-component-model/mpas-project-controller
 go 1.20
 
 require (
+	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/fluxcd/kustomize-controller/api v1.0.0-rc.3
 	github.com/fluxcd/pkg/apis/meta v1.0.0
 	github.com/fluxcd/pkg/runtime v0.27.0
