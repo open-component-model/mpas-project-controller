@@ -1,4 +1,4 @@
-namespace: ocm-system
+namespace: mpas-system
 resources:
 - ../crd
 - ../rbac

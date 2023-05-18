@@ -9,13 +9,12 @@ metadata:
     app.kubernetes.io/created-by: mpas-project-controller
     app.kubernetes.io/part-of: mpas-project-controller
     app.kubernetes.io/managed-by: kustomize
-  name: mpas-system
+  name: system
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mpas-project-controller
-  namespace: mpas-system
   labels:
     control-plane: mpas-project-controller-manager
     app.kubernetes.io/name: deployment
