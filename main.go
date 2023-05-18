@@ -52,6 +52,7 @@ func main() {
 	var defaultCommitName string
 	var defaultCommitEmail string
 	var defaultCommitMessage string
+	var defaultNamespace string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -63,6 +64,7 @@ func main() {
 	flag.StringVar(&defaultCommitName, "default-commit-name", "MPAS System", "The name to use for automated commits if one is not provided in the Project spec.")
 	flag.StringVar(&defaultCommitEmail, "default-commit-email", "automated@ocm.software", "The email address to use for automated commits if one is not provided in the Project spec.")
 	flag.StringVar(&defaultCommitMessage, "default-commit-message", "Automated commit by MPAS Project Controller", "The commit message to use for automated commits if one is not provided in the Project spec.")
+	flag.StringVar(&defaultNamespace, "default-namespace", "mpas-system", "The namespace in which this controller is running in. This namespace is used to locate Project objects.")
 
 	opts := zap.Options{
 		Development: true,
@@ -106,6 +108,7 @@ func main() {
 			Email:   defaultCommitEmail,
 			Message: defaultCommitMessage,
 		},
+		DefaultNamespace: defaultNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Project")
 		os.Exit(1)

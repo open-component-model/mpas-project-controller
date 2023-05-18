@@ -36,7 +36,6 @@ import (
 )
 
 const (
-	SystemNamespace              = "mpas-system"
 	ControllerServiceAccountName = "mpas-project-controller"
 	ValuesYAML                   = "products/**/values.yaml"
 )
@@ -48,6 +47,7 @@ type ProjectReconciler struct {
 	ClusterRoleName       string
 	Prefix                string
 	DefaultCommitTemplate mpasv1alpha1.CommitTemplate
+	DefaultNamespace      string
 }
 
 //+kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;secrets,verbs=get;list;watch;create;update;patch;delete
@@ -267,10 +267,6 @@ func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1a
 				return nil, fmt.Errorf("failed to create namespace: %w", err)
 			}
 
-			if err := r.Client.Get(ctx, types.NamespacedName{Name: name}, ns); err != nil {
-				return nil, fmt.Errorf("failed to get namespace: %w", err)
-			}
-
 			return ns, nil
 		}
 
@@ -363,12 +359,12 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 	mpasRoleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: SystemNamespace,
+			Namespace: r.DefaultNamespace,
 		},
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, mpasRoleBinding, func() error {
-		if obj.GetNamespace() == SystemNamespace && mpasRoleBinding.ObjectMeta.CreationTimestamp.IsZero() {
+		if obj.GetNamespace() == r.DefaultNamespace && mpasRoleBinding.ObjectMeta.CreationTimestamp.IsZero() {
 			if err := controllerutil.SetOwnerReference(obj, mpasRoleBinding, r.Scheme); err != nil {
 				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
 			}
@@ -461,12 +457,12 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 	repo := &gcv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: SystemNamespace,
+			Namespace: r.DefaultNamespace,
 		},
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
-		if obj.GetNamespace() == SystemNamespace && repo.ObjectMeta.CreationTimestamp.IsZero() {
+		if obj.GetNamespace() == r.DefaultNamespace && repo.ObjectMeta.CreationTimestamp.IsZero() {
 			if err := controllerutil.SetOwnerReference(obj, repo, r.Scheme); err != nil {
 				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
 			}
@@ -498,12 +494,12 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 	gitRepo := &sourcev1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: SystemNamespace,
+			Namespace: r.DefaultNamespace,
 		},
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, gitRepo, func() error {
-		if obj.GetNamespace() == SystemNamespace && gitRepo.ObjectMeta.CreationTimestamp.IsZero() {
+		if obj.GetNamespace() == r.DefaultNamespace && gitRepo.ObjectMeta.CreationTimestamp.IsZero() {
 			if err := controllerutil.SetOwnerReference(obj, gitRepo, r.Scheme); err != nil {
 				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
 			}
@@ -536,12 +532,12 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 		kustomization := &kustomizev1.Kustomization{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: SystemNamespace,
+				Namespace: r.DefaultNamespace,
 			},
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.Client, kustomization, func() error {
-			if obj.GetNamespace() == SystemNamespace && kustomization.ObjectMeta.CreationTimestamp.IsZero() {
+			if obj.GetNamespace() == r.DefaultNamespace && kustomization.ObjectMeta.CreationTimestamp.IsZero() {
 				if err := controllerutil.SetOwnerReference(obj, kustomization, r.Scheme); err != nil {
 					return fmt.Errorf("failed to set owner reference on namespace: %w", err)
 				}
