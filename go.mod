@@ -8,7 +8,7 @@ require (
 	github.com/fluxcd/pkg/runtime v0.27.0
 	github.com/fluxcd/pkg/ssa v0.27.0
 	github.com/fluxcd/source-controller/api v1.0.0-rc.3
-	github.com/open-component-model/git-controller v0.3.1
+	github.com/open-component-model/git-controller v0.3.2-0.20230515101654-ad44d1c15764
 	github.com/stretchr/testify v1.8.2
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3

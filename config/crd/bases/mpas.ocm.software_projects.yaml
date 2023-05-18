@@ -114,8 +114,6 @@ spec:
                     type: string
                   provider:
                     type: string
-                  repositoryName:
-                    type: string
                   visibility:
                     default: private
                     enum:
@@ -128,7 +126,6 @@ spec:
                 - isOrganization
                 - owner
                 - provider
-                - repositoryName
                 type: object
               interval:
                 type: string
