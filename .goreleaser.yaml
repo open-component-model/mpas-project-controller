@@ -46,4 +46,6 @@ dockers:
     goarch: amd64
     dockerfile: "{{ .Env.DOCKERFILE }}"
     build_flag_templates:
+    - "--build-arg=GITHUB_USER={{ .Env.BOT_GITHUB_USER }}"
+    - "--build-arg=GITHUB_TOKEN={{ .Env.BOT_GITHUB_TOKEN }}"
     - "--platform=linux/amd64"
