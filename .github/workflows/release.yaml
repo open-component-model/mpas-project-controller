@@ -14,13 +14,7 @@ env:
   DOCKERFILE: ${{ github.workspace }}/goreleaser.dockerfile
 
 jobs:
-  tests:
-    uses: ./.github/workflows/tests.yaml
-    permissions:
-      contents: read
-      pull-requests: 'read'
   release:
-    needs: tests
     name: Trigger release build
     runs-on: ubuntu-latest
     permissions:
