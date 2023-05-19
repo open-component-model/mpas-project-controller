@@ -2,14 +2,20 @@
 FROM golang:1.20 as builder
 ARG TARGETOS
 ARG TARGETARCH
+ARG GITHUB_USER
+ARG GITHUB_TOKEN
 
 WORKDIR /workspace
+
+# Configure git for private modules
+RUN git config --global url.https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/.insteadOf https://github.com/
+
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
-RUN go mod download
+RUN GOPRIVATE=github.com/open-component-model go mod download
 
 # Copy the go source
 COPY main.go main.go

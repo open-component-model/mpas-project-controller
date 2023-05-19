@@ -30,6 +30,13 @@ jobs:
       repository-projects: 'write'
       packages: 'write'
     steps:
+    - name: Generate token
+      id: generate_token
+      uses: tibdex/github-app-token@v1
+      with:
+        app_id: ${{ secrets.OCMBOT_APP_ID }}
+        private_key: ${{ secrets.OCMBOT_PRIV_KEY }}
+    - run: git config --global url.https://${{ secrets.OCMBOT_APP_ID }}:${{ steps.generate_token.outputs.token }}@github.com/.insteadOf https://github.com/
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -103,3 +110,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GORELEASER_CURRENT_TAG: ${{ env.RELEASE_VERSION }}
+        GOPRIVATE: github.com/open-component-model
+        BOT_GITHUB_USER: ${{ secrets.OCMBOT_APP_ID }}
+        BOT_GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
