@@ -1,6 +1,5 @@
 resources:
 - bases/mpas.ocm.software_projects.yaml
-- bases/mpas.ocm.software_targets.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 # the following config is for teaching kustomize how to do kustomization for CRDs.
 configurations:
