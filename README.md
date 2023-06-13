@@ -1,5 +1,7 @@
 # MPAS Project Controller
 
+[![REUSE status](https://api.reuse.software/badge/github.com/open-component-model/mpas-project-controller)](https://api.reuse.software/info/github.com/open-component-model/mpas-project-controller)
+
 The MPAS Project controller is part of the Multi-Platform Automation System (MPAS). It is a Kubernetes controller that manages the lifecycle of MPAS projects. It is responsible for creating and deleting projects and managing the project's resources. MPAS, and the Project Controller, are designed to be used with the [Open Component Model](https://ocm.software) and [Flux](https://fluxcd.io).
 
 The project controller provides a Project Custom Resource Definition (CRD) to enable the following features:
