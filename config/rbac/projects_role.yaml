@@ -6,7 +6,7 @@ rules:
 - apiGroups:
   - mpas.ocm.software
   resources:
-  - subscriptions
+  - componentsubscriptions
   - targets
   verbs:
   - get

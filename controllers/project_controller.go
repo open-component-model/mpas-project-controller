@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
@@ -144,6 +143,7 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		return ctrl.Result{}, fmt.Errorf("error reconciling namespace: %w", err)
 	}
 
+	logger.Info(fmt.Sprintf("mpas-project-controller/controllers/project_controller.go Reconcile Namespace done"))
 	sa, err := r.reconcileServiceAccount(ctx, obj)
 	if err != nil {
 		logger.Error(err, "failed to reconcile service account")
@@ -175,6 +175,8 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.RepositoryCreateOrUpdateFailedReason, err.Error())
 		return ctrl.Result{}, fmt.Errorf("error reconciling repository: %w", err)
 	}
+
+	logger.Info(fmt.Sprintf("repo.Name %s repo.Namespace %s", repo.Name, repo.Namespace))
 
 	obj.Status.RepositoryRef = &meta.NamespacedObjectReference{
 		Name:      repo.GetName(),
@@ -256,6 +258,9 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 
 func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1alpha1.Project) (*corev1.Namespace, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
+
+	fmt.Println(fmt.Sprintf("mpas-project-controller/controllers/project_controller.go Reconcile Namespace: %s", name))
+
 	ns := &corev1.Namespace{}
 
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: name}, ns); err != nil {
@@ -276,6 +281,7 @@ func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1a
 
 func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mpasv1alpha1.Project) (*corev1.ServiceAccount, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
+	fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileServiceAccount: ", name)
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -296,6 +302,9 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 
 func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1.Project) (*rbacv1.Role, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
+
+	fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileRole: ", name)
+
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -318,6 +327,7 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 					"productdeployments",
 					"productdeploymentgenerators",
 					"productdeploymentpipelines",
+					//productdescriptions
 				},
 				Verbs: []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 			},
@@ -345,14 +355,20 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 
 func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpasv1alpha1.Project, sa *corev1.ServiceAccount) ([]*rbacv1.RoleBinding, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
+
+	fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileRoleBindings: roleName", name)
+
 	key := types.NamespacedName{
 		Name: r.ClusterRoleName,
 	}
+	fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileRoleBindings: ClusterRoleName: ", r.ClusterRoleName)
 
 	cr := &rbacv1.ClusterRole{}
 	if err := r.Client.Get(ctx, key, cr); err != nil {
 		return nil, fmt.Errorf("failed to get projects cluster role: %w", err)
 	}
+
+	fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileRoleBindings: fetched clusterRole: ", cr.GetName(), "  namespace: ")
 
 	mpasRoleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -361,10 +377,13 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 		},
 	}
 
+	fmt.Println("mpas-project-controller/controller/project_controller.go: defaultNamespace: ", r.DefaultNamespace)
+
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, mpasRoleBinding, func() error {
 		if obj.GetNamespace() == r.DefaultNamespace && mpasRoleBinding.ObjectMeta.CreationTimestamp.IsZero() {
 			if err := controllerutil.SetOwnerReference(obj, mpasRoleBinding, r.Scheme); err != nil {
-				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
+				fmt.Println("mpas-project-controller/controller/project_controller.go: r.Scheme: ", r.Scheme.Name())
+				return fmt.Errorf("failed to set owner reference on namespace %s with error: %w", r.DefaultNamespace, err)
 			}
 		}
 
@@ -375,6 +394,8 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 				Namespace: sa.GetNamespace(),
 			},
 		}
+
+		fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileRoleBindings: sa ", sa.GetName(), sa.GetNamespace())
 
 		mpasRoleBinding.RoleRef = rbacv1.RoleRef{
 			Kind:     "ClusterRole",
@@ -395,6 +416,8 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 			Namespace: name,
 		},
 	}
+
+	fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileRoleBindings: projectRoleBindingCR ", name+"-clusterrole")
 
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, projectRoleBindingCR, func() error {
 		projectRoleBindingCR.Subjects = []rbacv1.Subject{
@@ -452,6 +475,8 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 
 func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1alpha1.Project) (*gcv1alpha1.Repository, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
+	fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileRepository: ", name, "namespace: ", r.DefaultNamespace)
+
 	repo := &gcv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -489,6 +514,9 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 
 func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj *mpasv1alpha1.Project, repo *gcv1alpha1.Repository) (*sourcev1.GitRepository, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
+
+	fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileFluxGitRepository:: name ", name, " in defaultNamespace: ", r.DefaultNamespace)
+
 	gitRepo := &sourcev1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -533,6 +561,8 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 				Namespace: r.DefaultNamespace,
 			},
 		}
+
+		fmt.Println("mpas-project-controller/controller/project_controller.go: reconcileFluxKustomizations: name: ", name, " namesspace: ", r.DefaultNamespace)
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.Client, kustomization, func() error {
 			if obj.GetNamespace() == r.DefaultNamespace && kustomization.ObjectMeta.CreationTimestamp.IsZero() {
