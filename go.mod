@@ -2,13 +2,17 @@ module github.com/open-component-model/mpas-project-controller
 
 go 1.20
 
-replace k8s.io/apimachinery => k8s.io/apimachinery v0.27.3
-
-replace k8s.io/api => k8s.io/api v0.27.3
-
 replace k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.3
 
 replace github.com/stretchr/testify => github.com/stretchr/testify v1.8.2
+
+replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.14.6
+
+replace k8s.io/client-go => k8s.io/client-go v0.27.4
+
+replace k8s.io/apimachinery => k8s.io/apimachinery v0.27.3
+
+replace k8s.io/api => k8s.io/api v0.27.3
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
