@@ -258,7 +258,6 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 
 func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1alpha1.Project) (*corev1.Namespace, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
-
 	ns := &corev1.Namespace{}
 
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: name}, ns); err != nil {
@@ -298,7 +297,6 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 
 func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1.Project) (*rbacv1.Role, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
-
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -349,7 +347,6 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 
 func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpasv1alpha1.Project, sa *corev1.ServiceAccount) ([]*rbacv1.RoleBinding, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
-
 	key := types.NamespacedName{
 		Name: r.ClusterRoleName,
 	}
@@ -457,7 +454,6 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 
 func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1alpha1.Project) (*gcv1alpha1.Repository, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
-
 	repo := &gcv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
