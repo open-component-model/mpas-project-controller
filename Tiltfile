@@ -78,7 +78,7 @@ load('ext://restart_process', 'docker_build_with_restart')
 # binary is rebuilt and the hot swat wrapper takes care of the rest.
 local_resource(
     'mpas-project-controller-binary',
-    'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager ./',
+    'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o bin/manager ./',
     deps = [
         "main.go",
         "go.mod",

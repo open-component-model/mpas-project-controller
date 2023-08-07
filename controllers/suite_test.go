@@ -87,6 +87,7 @@ func TestMain(m *testing.M) {
 	_ = kustomizev1.AddToScheme(scheme)
 	_ = mpasv1alpha1.AddToScheme(scheme)
 	_ = gcv1alpha1.AddToScheme(scheme)
+	_ = sourcev1.AddToScheme(scheme)
 
 	env = &testEnv{
 		scheme: scheme,

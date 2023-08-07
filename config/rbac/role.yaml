@@ -36,11 +36,13 @@ rules:
   - watch
 - apiGroups:
   - kustomize.toolkit.fluxcd.io
+  - notification.toolkit.fluxcd.io
   - source.toolkit.fluxcd.io
   resources:
   - gitrepositories
   - kustomizations
   - ocirepositories
+  - receivers
   verbs:
   - create
   - delete
@@ -55,6 +57,7 @@ rules:
   - productdeploymentgenerators
   - productdeploymentpipelines
   - productdeployments
+  - productdescriptions
   - projects
   - repositories
   - targets
@@ -83,8 +86,7 @@ rules:
 - apiGroups:
   - mpas.ocm.software
   resources:
- # - subscriptions
-  - componentsubscriptions
+  - subscriptions
   verbs:
   - get
   - list
