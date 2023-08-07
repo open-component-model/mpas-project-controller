@@ -4,8 +4,6 @@ go 1.20
 
 replace k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.3
 
-replace github.com/stretchr/testify => github.com/stretchr/testify v1.8.2
-
 replace k8s.io/client-go => k8s.io/client-go v0.26.4
 
 replace k8s.io/apimachinery => k8s.io/apimachinery v0.27.3
