@@ -36,13 +36,11 @@ rules:
   - watch
 - apiGroups:
   - kustomize.toolkit.fluxcd.io
-  - notification.toolkit.fluxcd.io
   - source.toolkit.fluxcd.io
   resources:
   - gitrepositories
   - kustomizations
   - ocirepositories
-  - receivers
   verbs:
   - create
   - delete

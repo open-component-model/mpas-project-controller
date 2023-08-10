@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
-	notifv1 "github.com/fluxcd/notification-controller/api/v1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 
 	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
@@ -41,7 +40,6 @@ func init() {
 	utilruntime.Must(sourcev1.AddToScheme(scheme))
 	utilruntime.Must(kustomizev1.AddToScheme(scheme))
 	utilruntime.Must(gcv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(notifv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

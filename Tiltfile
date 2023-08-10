@@ -19,7 +19,6 @@ settings = {
         "token": os.getenv("GITHUB_TOKEN", ""),
         "email": os.getenv("GITHUB_EMAIL", ""),
         "user": os.getenv("GITHUB_USER", ""),
-        "password": os.getenv("GITHUB_PWD", ""),
     },
     "verification_keys": {},
 }

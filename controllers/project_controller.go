@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
-	notifv1 "github.com/fluxcd/notification-controller/api/v1"
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/fluxcd/pkg/runtime/patch"
@@ -55,7 +54,7 @@ type ProjectReconciler struct {
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects;targets;repositories;productdeployments;productdeploymentgenerators;productdeploymentpipelines;productdescriptions,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=subscriptions,verbs=get;list;watch
 //+kubebuilder:rbac:groups=delivery.ocm.software,resources=componentsubscriptions;componentversions;configurations;localizations,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=source.toolkit.fluxcd.io;kustomize.toolkit.fluxcd.io;notification.toolkit.fluxcd.io,resources=gitrepositories;ocirepositories;kustomizations;receivers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=source.toolkit.fluxcd.io;kustomize.toolkit.fluxcd.io,resources=gitrepositories;ocirepositories;kustomizations,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/finalizers,verbs=update
 
@@ -70,7 +69,6 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&gcv1alpha1.Repository{}).
 		Owns(&sourcev1.GitRepository{}).
 		Owns(&kustomizev1.Kustomization{}).
-		Owns(&notifv1.Receiver{}).
 		Complete(r)
 }
 
@@ -329,8 +327,8 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 			},
 			{
-				APIGroups: []string{"source.toolkit.fluxcd.io", "kustomize.toolkit.fluxcd.io", "notification.toolkit.fluxcd.io"},
-				Resources: []string{"ocirepositories", "kustomizations", "receivers"},
+				APIGroups: []string{"source.toolkit.fluxcd.io", "kustomize.toolkit.fluxcd.io"},
+				Resources: []string{"ocirepositories", "kustomizations"},
 				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 			},
 		}
