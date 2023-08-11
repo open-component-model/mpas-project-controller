@@ -264,7 +264,6 @@ func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1a
 			if err := r.Client.Create(ctx, ns); err != nil {
 				return nil, fmt.Errorf("failed to create namespace: %w", err)
 			}
-
 			return ns, nil
 		}
 
@@ -364,7 +363,7 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, mpasRoleBinding, func() error {
 		if obj.GetNamespace() == r.DefaultNamespace && mpasRoleBinding.ObjectMeta.CreationTimestamp.IsZero() {
 			if err := controllerutil.SetOwnerReference(obj, mpasRoleBinding, r.Scheme); err != nil {
-				return fmt.Errorf("failed to set owner reference on namespace: %w", err)
+				return fmt.Errorf("failed to set owner reference on namespace %s with error: %w", r.DefaultNamespace, err)
 			}
 		}
 
@@ -489,6 +488,7 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 
 func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj *mpasv1alpha1.Project, repo *gcv1alpha1.Repository) (*sourcev1.GitRepository, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
+
 	gitRepo := &sourcev1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
