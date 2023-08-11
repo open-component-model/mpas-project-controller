@@ -55,7 +55,6 @@ rules:
   - productdeploymentgenerators
   - productdeploymentpipelines
   - productdeployments
-  - productdescriptions
   - projects
   - repositories
   - targets
