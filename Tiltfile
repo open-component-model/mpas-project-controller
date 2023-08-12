@@ -45,22 +45,9 @@ def bootstrap_or_install_flux():
     else:
         local(flux_cmd + " install")
 
-def create_secrets():
-    opts = settings.get("create_secrets")
-    if not opts.get("enable"):
-        return
-
-    k8s_yaml(secret_from_dict("project-creds", "mpas-system", inputs = {
-        'username' : opts.get('user'),
-        'token' : opts.get('token'),
-        'password' : opts.get('token'),
-    }), allow_duplicates = True)
 
 # check if flux is needed
 bootstrap_or_install_flux()
-
-# create secrets
-create_secrets()
 
 # Use kustomize to build the install yaml files
 install = kustomize('config/default')
@@ -90,7 +77,7 @@ load('ext://restart_process', 'docker_build_with_restart')
 # binary is rebuilt and the hot swat wrapper takes care of the rest.
 local_resource(
     'mpas-project-controller-binary',
-    'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager ./',
+    'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o bin/manager ./',
     deps = [
         "main.go",
         "go.mod",
