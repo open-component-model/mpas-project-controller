@@ -12,7 +12,7 @@ if str(local("command -v " + kubectl_cmd + " || true", quiet = True)) == "":
 # set defaults
 settings = {
     "flux": {
-        "enabled": True,
+        "enabled": False,
     },
     "create_secrets": {
         "enable": True,
