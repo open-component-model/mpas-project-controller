@@ -154,3 +154,11 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: create-helmchart
+create-helmchart:
+	./hack/create_helm_chart.sh "local" "mpas-project-controller"
+
+.PHONY: create-helmchart-release
+create-helmchart-release:
+	./hack/create_helm_chart.sh "release" "mpas-project-controller"
