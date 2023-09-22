@@ -1,0 +1,20 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: mpas-project-controller
+    app.kubernetes.io/instance: mpas-project-manager-rolebinding
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: clusterrolebinding
+    app.kubernetes.io/part-of: mpas-project-controller
+  name: mpas-project-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: mpas-project-manager-role
+subjects:
+- kind: ServiceAccount
+  name: mpas-project-controller
+  namespace: mpas-system
