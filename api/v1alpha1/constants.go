@@ -9,3 +9,9 @@ const (
 	// This key is used to look up the Project that belongs to it.
 	ProjectKey = "mpas.ocm.system/project"
 )
+
+const (
+	// ManagedMPASSecretAnnotationKey denotes that the project controller needs to set these secrets
+	// in the service account of the project.
+	ManagedMPASSecretAnnotationKey = "mpas.ocm.system/secret.dockerconfig"
+)
