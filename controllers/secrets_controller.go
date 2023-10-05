@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/fluxcd/pkg/runtime/conditions"
-	"github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	"github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 )
 
 // SecretsReconciler reconciles a Secret object
@@ -48,7 +49,7 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 
 	project, err := r.GetProjectFromObjectNamespace(ctx, r.Client, secret)
 	if err != nil {
-		if apierrors.IsNotFound(err) || errors.Is(err, notProject) {
+		if apierrors.IsNotFound(err) {
 			// silently skip if project is not there yet.
 			// TODO: this is a problem if things are assigned simultaneously.
 			logger.Info("project not found in mpas namespace; requeuing so we don't miss the secret")
@@ -59,7 +60,7 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 	}
 
 	if !conditions.IsReady(project) {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: project.GetRequeueAfter()}, nil
 	}
 
 	serviceAccount := &corev1.ServiceAccount{}

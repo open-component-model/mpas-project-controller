@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -11,8 +10,6 @@ import (
 
 	"github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 )
-
-var notProject = errors.New("no project in namespace")
 
 // GetProjectFromObjectNamespace returns the Project from the annotation of the current namespace that an object
 // is in.
