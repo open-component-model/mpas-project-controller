@@ -20,6 +20,19 @@ import (
 )
 
 func TestSecretsReconciler_Reconcile(t *testing.T) {
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace",
+			Annotations: map[string]string{
+				v1alpha1.ProjectKey: "test-project",
+			},
+		},
+	}
+	mpasSystem := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mpas-system",
+		},
+	}
 	tests := []struct {
 		name       string
 		client     func() client.Client
@@ -35,7 +48,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 				serviceAccount := &corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-service-account",
-						Namespace: "mpas-system",
+						Namespace: "test-namespace",
 					},
 				}
 				project := &v1alpha1.Project{
@@ -47,7 +60,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 						Inventory: &v1alpha1.ResourceInventory{
 							Entries: []v1alpha1.ResourceRef{
 								{
-									ID:      "mpas-system_test-service-account_v1_ServiceAccount",
+									ID:      "test-namespace_test-service-account_v1_ServiceAccount",
 									Version: "1",
 								},
 							},
@@ -57,7 +70,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 				secret := &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-secret",
-						Namespace: "mpas-system",
+						Namespace: "test-namespace",
 						Annotations: map[string]string{
 							"mpas.ocm.system/secret.dockerconfig": "managed",
 						},
@@ -68,7 +81,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 					Type: "generic",
 				}
 				conditions.MarkTrue(project, meta.ReadyCondition, meta.SucceededReason, "Done")
-				fakeClient := env.FakeKubeClient(WithObjects(project, secret, serviceAccount))
+				fakeClient := env.FakeKubeClient(WithObjects(mpasSystem, ns, project, secret, serviceAccount))
 
 				return fakeClient
 			},
@@ -97,7 +110,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 				serviceAccount := &corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-service-account",
-						Namespace: "mpas-system",
+						Namespace: ns.Name,
 					},
 					ImagePullSecrets: []corev1.LocalObjectReference{
 						{
@@ -114,7 +127,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 						Inventory: &v1alpha1.ResourceInventory{
 							Entries: []v1alpha1.ResourceRef{
 								{
-									ID:      "mpas-system_test-service-account_v1_ServiceAccount",
+									ID:      "test-namespace_test-service-account_v1_ServiceAccount",
 									Version: "1",
 								},
 							},
@@ -124,7 +137,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 				secret := &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-secret-2",
-						Namespace: "mpas-system",
+						Namespace: ns.Name,
 						Annotations: map[string]string{
 							"mpas.ocm.system/secret.dockerconfig": "managed",
 						},
@@ -136,7 +149,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 					Type: "generic",
 				}
 				conditions.MarkTrue(project, meta.ReadyCondition, meta.SucceededReason, "Done")
-				fakeClient := env.FakeKubeClient(WithObjects(project, secret, serviceAccount))
+				fakeClient := env.FakeKubeClient(WithObjects(mpasSystem, ns, project, secret, serviceAccount))
 
 				return fakeClient
 			},
@@ -145,6 +158,71 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 				for _, s := range serviceAccount.ImagePullSecrets {
 					if s.Name == "test-secret-2" {
 						return assert.Fail(t, "Did not expect test-secret-2 to be in the service account image pull secrets.")
+					}
+				}
+
+				return true
+			},
+			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+				if err != nil {
+					return assert.Fail(t, fmt.Sprintf("Expected no error, but error occurred: %v", err))
+				}
+
+				return false
+			},
+		},
+		{
+			name:       "removed annotations are also deleted from the service account",
+			secretName: "test-secret-3",
+			client: func() client.Client {
+				serviceAccount := &corev1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-service-account",
+						Namespace: ns.Name,
+					},
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{
+							Name: "test-secret-3",
+						},
+					},
+				}
+				project := &v1alpha1.Project{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-project",
+						Namespace: "mpas-system",
+					},
+					Status: v1alpha1.ProjectStatus{
+						Inventory: &v1alpha1.ResourceInventory{
+							Entries: []v1alpha1.ResourceRef{
+								{
+									ID:      "test-namespace_test-service-account_v1_ServiceAccount",
+									Version: "1",
+								},
+							},
+						},
+					},
+				}
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "test-secret-3",
+						Namespace:         ns.Name,
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					},
+					Data: map[string][]byte{
+						"bla": []byte("bla"),
+					},
+					Type: "generic",
+				}
+				conditions.MarkTrue(project, meta.ReadyCondition, meta.SucceededReason, "Done")
+				fakeClient := env.FakeKubeClient(WithObjects(mpasSystem, ns, project, secret, serviceAccount))
+
+				return fakeClient
+			},
+			wantResult: func(t assert.TestingT, a any, b ...any) bool {
+				serviceAccount := a.(*corev1.ServiceAccount)
+				for _, s := range serviceAccount.ImagePullSecrets {
+					if s.Name == "test-secret-3" {
+						return assert.Fail(t, "Did not expect test-secret-3 to be in the service account image pull secrets.")
 					}
 				}
 
@@ -167,11 +245,11 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 				Scheme:           env.scheme,
 				DefaultNamespace: "mpas-system",
 			}
-			_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: tt.secretName, Namespace: "mpas-system"}})
+			_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: tt.secretName, Namespace: ns.Name}})
 			tt.wantErr(t, err, fmt.Sprintf("Reconcile(%v)", tt.name))
 
 			serviceAccount := &corev1.ServiceAccount{}
-			require.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: "test-service-account", Namespace: "mpas-system"}, serviceAccount))
+			require.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: "test-service-account", Namespace: ns.Name}, serviceAccount))
 
 			tt.wantResult(t, serviceAccount)
 		})

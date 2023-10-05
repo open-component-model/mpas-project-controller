@@ -7,6 +7,7 @@ package controllers
 import (
 	"github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -22,37 +23,38 @@ func (SecretAnnotationExistsPredicate) Update(e event.UpdateEvent) bool {
 		return false
 	}
 
+	oldSecret, ok := e.ObjectOld.(*corev1.Secret)
+	if !ok {
+		return false
+	}
+
 	newSecret, ok := e.ObjectNew.(*corev1.Secret)
 	if !ok {
 		return false
 	}
 
-	_, ok = newSecret.Annotations[v1alpha1.ManagedMPASSecretAnnotationKey]
-	return ok
+	_, oldOk := oldSecret.Annotations[v1alpha1.ManagedMPASSecretAnnotationKey]
+	_, newOk := newSecret.Annotations[v1alpha1.ManagedMPASSecretAnnotationKey]
+
+	return (oldOk && !newOk) || newOk
 }
 
 // Create will check if the secret contains the managed annotation.
 func (SecretAnnotationExistsPredicate) Create(e event.CreateEvent) bool {
-	if e.Object == nil {
-		return false
-	}
-
-	secret, ok := e.Object.(*corev1.Secret)
-	if !ok {
-		return false
-	}
-
-	_, ok = secret.Annotations[v1alpha1.ManagedMPASSecretAnnotationKey]
-	return ok
+	return checkAnnotation(e.Object)
 }
 
 // Delete will make sure we don't remove anything that doesn't have the right mpas annotation.
 func (SecretAnnotationExistsPredicate) Delete(e event.DeleteEvent) bool {
-	if e.Object == nil {
+	return checkAnnotation(e.Object)
+}
+
+func checkAnnotation(obj client.Object) bool {
+	if obj == nil {
 		return false
 	}
 
-	secret, ok := e.Object.(*corev1.Secret)
+	secret, ok := obj.(*corev1.Secret)
 	if !ok {
 		return false
 	}

@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/fluxcd/pkg/runtime/conditions"
+	"github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -83,7 +83,7 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 	if err := r.Get(ctx, req.NamespacedName, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// make sure we don't have it in our list of image pull secrets.
-			return r.reconcileDelete(ctx, serviceAccount, req.NamespacedName)
+			return r.reconcileDelete(ctx, serviceAccount, secret)
 		}
 
 		return ctrl.Result{}, fmt.Errorf("failed to fetch secret from cluster: %w", err)
@@ -91,48 +91,55 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 
 	// reconcile delete
 	if secret.DeletionTimestamp != nil {
-		return r.reconcileDelete(ctx, serviceAccount, req.NamespacedName)
+		return r.reconcileDelete(ctx, serviceAccount, secret)
 	}
 
 	// reconcile normal
-	return r.reconcileNormal(ctx, serviceAccount, req.NamespacedName)
+	return r.reconcileNormal(ctx, serviceAccount, secret)
 }
 
-func (r *SecretsReconciler) reconcileNormal(ctx context.Context, account *corev1.ServiceAccount, req types.NamespacedName) (ctrl.Result, error) {
+func (r *SecretsReconciler) reconcileNormal(ctx context.Context, account *corev1.ServiceAccount, secret *corev1.Secret) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	logger.Info("appending secret to image pull secrets.")
-	if r.containsSecret(account.ImagePullSecrets, req.Name) {
-		logger.Info("nothing to do, secret already contained in image pull secrets")
+	logger.Info("reconciling secret to image pull secrets.")
+	if r.containsSecret(account.ImagePullSecrets, secret.Name) {
+		// If the annotation was deleted but the secret is IN the list of secrets, remove it.
+		if _, ok := secret.Annotations[v1alpha1.ManagedMPASSecretAnnotationKey]; !ok {
+			r.deleteSecret(account, secret)
+		}
 
 		return ctrl.Result{}, nil
 	}
 
-	account.ImagePullSecrets = append(account.ImagePullSecrets, corev1.LocalObjectReference{Name: req.Name})
+	account.ImagePullSecrets = append(account.ImagePullSecrets, corev1.LocalObjectReference{Name: secret.Name})
 
 	return ctrl.Result{}, nil
 }
 
-func (r *SecretsReconciler) reconcileDelete(ctx context.Context, account *corev1.ServiceAccount, name types.NamespacedName) (ctrl.Result, error) {
+func (r *SecretsReconciler) reconcileDelete(ctx context.Context, account *corev1.ServiceAccount, secret *corev1.Secret) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	if !r.containsSecret(account.ImagePullSecrets, name.Name) {
+	if !r.containsSecret(account.ImagePullSecrets, secret.Name) {
 		// nothing to do, secret already removed from service account
 		logger.Info("nothing to do, secret already removed from image pull secrets")
 
 		return ctrl.Result{}, nil
 	}
 
+	r.deleteSecret(account, secret)
+
+	return ctrl.Result{}, nil
+}
+
+func (r *SecretsReconciler) deleteSecret(account *corev1.ServiceAccount, secret *corev1.Secret) {
 	pullSecrets := account.ImagePullSecrets
 	for i := 0; i < len(pullSecrets); i++ {
-		if pullSecrets[i].Name == name.Name {
+		if pullSecrets[i].Name == secret.Name {
 			pullSecrets = append(pullSecrets[:i], pullSecrets[i+1:]...)
 			break
 		}
 	}
 
 	account.ImagePullSecrets = pullSecrets
-
-	return ctrl.Result{}, nil
 }
 
 func (r *SecretsReconciler) containsSecret(list []corev1.LocalObjectReference, name string) bool {
