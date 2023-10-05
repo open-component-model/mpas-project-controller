@@ -8,6 +8,7 @@ import (
 	"github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -81,4 +82,66 @@ func TestProjectReconciler(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, conditions.IsTrue(project, meta.ReadyCondition))
+}
+
+func TestProjectNamespaceAnnotation(t *testing.T) {
+	project := DefaultProject.DeepCopy()
+	secret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "project-creds",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			"username": []byte("test-user"),
+			"password": []byte("test-password"),
+		},
+	}
+	cr := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mpas-projects-clusterrole",
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{""},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{"mpas.ocm.software"},
+				Resources: []string{"Repository"},
+				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+			},
+		},
+	}
+
+	controllerutil.AddFinalizer(project, mpasv1alpha1.ProjectFinalizer)
+
+	client := env.FakeKubeClient(WithAddToScheme(mpasv1alpha1.AddToScheme), WithObjects(project, secret, cr))
+	controller := &ProjectReconciler{
+		Client:          client,
+		Scheme:          env.scheme,
+		ClusterRoleName: cr.Name,
+		Prefix:          "mpas",
+	}
+
+	_, err := controller.Reconcile(context.Background(), ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: project.Namespace,
+			Name:      project.Name,
+		},
+	})
+	require.NoError(t, err)
+
+	name := project.GetNameWithPrefix("mpas")
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+
+	err = client.Get(context.Background(), types.NamespacedName{Name: name}, ns)
+	require.NoError(t, err)
+
+	_, ok := ns.Annotations[mpasv1alpha1.ProjectKey]
+	assert.True(t, ok)
 }
