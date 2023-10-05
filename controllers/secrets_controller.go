@@ -73,7 +73,6 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 	defer func() {
 		logger.Info("updating service account", "secrets", serviceAccount.ImagePullSecrets)
 		if err := r.Update(ctx, serviceAccount); err != nil {
-			//logger.Error(err, "failed to patch service account: %w", err)
 			retErr = errors.Join(retErr, fmt.Errorf("failed to update service account: %w", err))
 		}
 	}()
@@ -81,15 +80,20 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 	// if not found or deleted, reconcile deleted -> remove from list if still in there
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, req.NamespacedName, secret); err != nil {
-		if apierrors.IsNotFound(err) || (err == nil && secret.DeletionTimestamp != nil) {
+		if apierrors.IsNotFound(err) {
+			// make sure we don't have it in our list of image pull secrets.
 			return r.reconcileDelete(ctx, serviceAccount, req.NamespacedName)
 		}
 
 		return ctrl.Result{}, fmt.Errorf("failed to fetch secret from cluster: %w", err)
 	}
 
-	// reconcile normally.
+	// reconcile delete
+	if secret.DeletionTimestamp != nil {
+		return r.reconcileDelete(ctx, serviceAccount, req.NamespacedName)
+	}
 
+	// reconcile normal
 	return r.reconcileNormal(ctx, serviceAccount, req.NamespacedName)
 }
 
