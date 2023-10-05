@@ -256,18 +256,23 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 
 func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1alpha1.Project) (*corev1.Namespace, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
-	ns := &corev1.Namespace{}
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Annotations: map[string]string{},
+		},
+	}
 
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: name}, ns); err != nil {
-		if apierrors.IsNotFound(err) {
-			ns.Name = name
-			if err := r.Client.Create(ctx, ns); err != nil {
-				return nil, fmt.Errorf("failed to create namespace: %w", err)
-			}
-			return ns, nil
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ns, func() error {
+		if _, ok := ns.Annotations[mpasv1alpha1.ProjectKey]; !ok {
+			ns.Annotations[mpasv1alpha1.ProjectKey] = obj.Name
 		}
 
-		return nil, fmt.Errorf("error retrieving namespace: %w", err)
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create namespace: %w", err)
 	}
 
 	return ns, nil
