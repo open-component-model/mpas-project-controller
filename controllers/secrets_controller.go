@@ -9,6 +9,7 @@ import (
 	"github.com/fluxcd/pkg/runtime/conditions"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,7 +39,14 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 	logger := log.FromContext(ctx)
 	logger.Info("reconciling object", "secret", req.NamespacedName)
 
-	project, err := GetProjectInNamespace(ctx, r.Client, r.DefaultNamespace)
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      req.Name,
+			Namespace: req.Namespace,
+		},
+	}
+
+	project, err := r.GetProjectFromObjectNamespace(ctx, r.Client, secret)
 	if err != nil {
 		if apierrors.IsNotFound(err) || errors.Is(err, notProject) {
 			// silently skip if project is not there yet.
@@ -48,12 +56,6 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 		}
 
 		return ctrl.Result{}, fmt.Errorf("failed to find project in namespace %s: %w", r.DefaultNamespace, err)
-	}
-
-	if req.NamespacedName.Namespace != project.Namespace {
-		logger.Info("skipping secret as it doesn't belong to the project")
-
-		return ctrl.Result{}, nil
 	}
 
 	if !conditions.IsReady(project) {
@@ -78,7 +80,6 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 	}()
 
 	// if not found or deleted, reconcile deleted -> remove from list if still in there
-	secret := &corev1.Secret{}
 	if err := r.Get(ctx, req.NamespacedName, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// make sure we don't have it in our list of image pull secrets.
