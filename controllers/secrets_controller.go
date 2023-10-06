@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
+	"reflect"
 
 	"github.com/fluxcd/pkg/runtime/conditions"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	kuberecorder "k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,6 +24,8 @@ import (
 // SecretsReconciler reconciles a Secret object
 type SecretsReconciler struct {
 	client.Client
+	kuberecorder.EventRecorder
+
 	Scheme           *runtime.Scheme
 	DefaultNamespace string
 }
@@ -49,17 +52,18 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 
 	project, err := r.GetProjectFromObjectNamespace(ctx, r.Client, secret)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			// silently skip if project is not there yet.
-			// TODO: this is a problem if things are assigned simultaneously.
-			logger.Info("project not found in mpas namespace; requeuing so we don't miss the secret")
-			return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
+		if errors.Is(err, errNotProjectNamespace) {
+			logger.Info("secret belongs to a namespace that was not created by project controller... ignoring")
+
+			return ctrl.Result{}, nil
 		}
 
-		return ctrl.Result{}, fmt.Errorf("failed to find project in namespace %s: %w", r.DefaultNamespace, err)
+		return ctrl.Result{}, fmt.Errorf("failed to find project in namespace %s: %w", secret.Namespace, err)
 	}
 
 	if !conditions.IsReady(project) {
+		logger.Info("waiting for project to become ready...")
+
 		return ctrl.Result{RequeueAfter: project.GetRequeueAfter()}, nil
 	}
 
@@ -73,8 +77,21 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 		return ctrl.Result{}, fmt.Errorf("failed to fetch service account: %w", err)
 	}
 
+	origServiceAccount := serviceAccount.DeepCopy()
+
 	defer func() {
+		// only update if there is a need for it
+		if reflect.DeepEqual(origServiceAccount.ImagePullSecrets, serviceAccount.ImagePullSecrets) {
+			return
+		}
+
 		logger.Info("updating service account", "secrets", serviceAccount.ImagePullSecrets)
+		reason := v1alpha1.AddServiceAccountImagePullSecretsReason
+		if len(origServiceAccount.ImagePullSecrets) > len(serviceAccount.ImagePullSecrets) {
+			reason = v1alpha1.RemoveServiceAccountImagePullSecretsReason
+		}
+		r.EventRecorder.Event(serviceAccount, v1alpha1.UpdateServiceAccountImagePullSecretsType, reason, "")
+
 		if err := r.Update(ctx, serviceAccount); err != nil {
 			retErr = errors.Join(retErr, fmt.Errorf("failed to update service account: %w", err))
 		}
@@ -108,6 +125,8 @@ func (r *SecretsReconciler) reconcileNormal(ctx context.Context, account *corev1
 		if _, ok := secret.Annotations[v1alpha1.ManagedMPASSecretAnnotationKey]; !ok {
 			r.deleteSecret(account, secret)
 		}
+
+		logger.Info("nothing to do, secret already added to image pull secrets")
 
 		return ctrl.Result{}, nil
 	}

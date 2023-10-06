@@ -47,7 +47,6 @@ func init() {
 
 func main() {
 	var (
-		certificateIssuerName string
 		metricsAddr           string
 		enableLeaderElection  bool
 		probeAddr             string
@@ -58,6 +57,7 @@ func main() {
 		defaultCommitMessage  string
 		defaultNamespace      string
 		registryAddress       string
+		certificateIssuerName string
 	)
 
 	flag.StringVar(&certificateIssuerName, "certificate-issuer-name", "mpas-certificate-issuer", "The name of the ClusterIssuer to request certificates from. By default this is created by the MPAS Bootstrap command.")
@@ -128,6 +128,7 @@ func main() {
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		DefaultNamespace: defaultNamespace,
+		EventRecorder:    mgr.GetEventRecorderFor("secret-controller"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)

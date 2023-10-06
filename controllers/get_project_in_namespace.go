@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -9,6 +10,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/open-component-model/mpas-project-controller/api/v1alpha1"
+)
+
+var (
+	errNotProjectNamespace = errors.New("not in a namespace that belongs to a project")
 )
 
 // GetProjectFromObjectNamespace returns the Project from the annotation of the current namespace that an object
@@ -22,7 +27,7 @@ func (r *SecretsReconciler) GetProjectFromObjectNamespace(ctx context.Context, c
 
 	v, ok := ns.Annotations[v1alpha1.ProjectKey]
 	if !ok {
-		return nil, fmt.Errorf("project key %s not found on namespace", v1alpha1.ProjectKey)
+		return nil, errNotProjectNamespace
 	}
 
 	// Get the project from the annotation.

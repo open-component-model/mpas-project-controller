@@ -63,6 +63,7 @@ type ProjectReconciler struct {
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/finalizers,verbs=update
 //+kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=create;update;get;list;delete;watch
+//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
