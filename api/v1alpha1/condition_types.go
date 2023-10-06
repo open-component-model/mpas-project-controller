@@ -16,6 +16,9 @@ const (
 	// RBACCreateOrUpdateFailedReason indicates that the project cluster role could not be reconciled.
 	RBACCreateOrUpdateFailedReason string = "RBACCreateOrUpdateFailed"
 
+	// CertificateCreateOrUpdateFailedReason indicates that the project certificate could not be reconciled.
+	CertificateCreateOrUpdateFailedReason string = "CertificateCreateOrUpdateFailed"
+
 	// RepositoryCreateOrUpdateFailedReason indicates that the project repository could not be reconciled.
 	RepositoryCreateOrUpdateFailedReason string = "RepositoryCreateOrUpdateFailed"
 

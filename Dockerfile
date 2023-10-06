@@ -21,6 +21,8 @@ RUN GOPRIVATE=github.com/open-component-model go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY pkg/ pkg/
+COPY inventory/ inventory/
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command

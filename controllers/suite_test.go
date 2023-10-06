@@ -7,6 +7,7 @@ package controllers
 import (
 	"testing"
 
+	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -87,6 +88,7 @@ func TestMain(m *testing.M) {
 	_ = kustomizev1.AddToScheme(scheme)
 	_ = mpasv1alpha1.AddToScheme(scheme)
 	_ = gcv1alpha1.AddToScheme(scheme)
+	_ = certmanagerv1.AddToScheme(scheme)
 
 	env = &testEnv{
 		scheme: scheme,
