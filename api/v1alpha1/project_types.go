@@ -5,9 +5,12 @@
 package v1alpha1
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/fluxcd/pkg/apis/meta"
 	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
@@ -65,6 +68,35 @@ type ProjectStatus struct {
 	// RepositoryRef contains the reference to the repository resource that has been created by the project controller.
 	// +optional
 	RepositoryRef *meta.NamespacedObjectReference `json:"repositoryRef,omitempty"`
+}
+
+// GetServiceAccountNamespacedName returns the service account namespace name from the inventory.
+func (in *Project) GetServiceAccountNamespacedName() (types.NamespacedName, error) {
+	// Entry ID: <namespace>_<name>_<group>_<kind>. Just look for a postfix of gitrepository
+	if in.Status.Inventory == nil {
+		return types.NamespacedName{}, fmt.Errorf("project inventory is empty")
+	}
+
+	var name, namespace string
+	for _, e := range in.Status.Inventory.Entries {
+		split := strings.Split(e.ID, "_")
+		if len(split) < 2 {
+			return types.NamespacedName{}, fmt.Errorf("failed to split ID: %s", e.ID)
+		}
+
+		if split[len(split)-1] == "ServiceAccount" {
+			name = split[1]
+			namespace = split[0]
+			break
+		}
+	}
+
+	if name == "" {
+		return types.NamespacedName{}, fmt.Errorf("service account not found in the project inventory")
+	}
+
+	return types.NamespacedName{Name: name, Namespace: namespace}, nil
+
 }
 
 // +kubebuilder:object:root=true

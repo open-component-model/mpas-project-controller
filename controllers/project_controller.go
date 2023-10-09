@@ -18,6 +18,7 @@ import (
 	"github.com/fluxcd/pkg/runtime/patch"
 	rreconcile "github.com/fluxcd/pkg/runtime/reconcile"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 	mpasv1alpha1 "github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 	"github.com/open-component-model/mpas-project-controller/inventory"
 )
@@ -63,6 +63,7 @@ type ProjectReconciler struct {
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/finalizers,verbs=update
 //+kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=create;update;get;list;delete;watch
+//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -80,7 +81,7 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, retErr error) {
+func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, retErr error) {
 	logger := log.FromContext(ctx).WithName("mpas-project-reconcile")
 	logger.Info("starting mpas-project reconcile loop")
 
@@ -312,6 +313,8 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 			Namespace: name,
 		},
 	}
+
+	// Get the service account, if it doesn't exist, create it,
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, sa, func() error {
 		return nil
