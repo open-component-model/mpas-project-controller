@@ -8,6 +8,7 @@ import (
 	"flag"
 	"os"
 
+	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -40,20 +41,27 @@ func init() {
 	utilruntime.Must(sourcev1.AddToScheme(scheme))
 	utilruntime.Must(kustomizev1.AddToScheme(scheme))
 	utilruntime.Must(gcv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(certmanagerv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-	var clusterRoleName string
-	var prefix string
-	var defaultCommitName string
-	var defaultCommitEmail string
-	var defaultCommitMessage string
-	var defaultNamespace string
+	var (
+		certificateIssuerName string
+		metricsAddr           string
+		enableLeaderElection  bool
+		probeAddr             string
+		clusterRoleName       string
+		prefix                string
+		defaultCommitName     string
+		defaultCommitEmail    string
+		defaultCommitMessage  string
+		defaultNamespace      string
+		registryAddress       string
+	)
 
+	flag.StringVar(&certificateIssuerName, "certificate-issuer-name", "mpas-certificate-issuer", "The name of the ClusterIssuer to request certificates from. By default this is created by the MPAS Bootstrap command.")
+	flag.StringVar(&registryAddress, "registry-address", "registry.ocm-system.svc.cluster.local", "The address of the internal registry. This is used for the certificate DNS names.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -103,6 +111,8 @@ func main() {
 		Scheme:          mgr.GetScheme(),
 		ClusterRoleName: clusterRoleName,
 		Prefix:          prefix,
+		IssuerName:      certificateIssuerName,
+		RegistryAddr:    registryAddress,
 		DefaultCommitTemplate: mpasv1alpha1.CommitTemplate{
 			Name:    defaultCommitName,
 			Email:   defaultCommitEmail,

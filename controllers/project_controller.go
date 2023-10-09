@@ -6,9 +6,12 @@ package controllers
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 
+	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	v1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
@@ -46,6 +49,8 @@ type ProjectReconciler struct {
 	Prefix                string
 	DefaultCommitTemplate mpasv1alpha1.CommitTemplate
 	DefaultNamespace      string
+	IssuerName            string
+	RegistryAddr          string
 }
 
 //+kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;secrets,verbs=get;list;watch;create;update;patch;delete
@@ -57,6 +62,7 @@ type ProjectReconciler struct {
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io;kustomize.toolkit.fluxcd.io,resources=gitrepositories;ocirepositories;kustomizations,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=create;update;get;list;delete;watch
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -118,6 +124,10 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 
 	rreconcile.ProgressiveStatus(false, obj, meta.ProgressingReason, "reconciliation in progress")
 	if err := r.patch(ctx, obj, sp); err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+
 		return ctrl.Result{}, fmt.Errorf("failed to patch object: %w", err)
 	}
 
@@ -125,6 +135,10 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		conditions.MarkUnknown(obj, meta.ReadyCondition, meta.ProgressingReason, "reconciliation in progress")
 		conditions.MarkReconciling(obj, meta.ProgressingReason, "processing object: new generation %d -> %d", obj.Status.ObservedGeneration, obj.Generation)
 		if err := r.patch(ctx, obj, sp); err != nil {
+			if apierrors.IsNotFound(err) {
+				return ctrl.Result{}, nil
+			}
+
 			return ctrl.Result{}, fmt.Errorf("failed to patch object: %w", err)
 		}
 	}
@@ -168,6 +182,14 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		return ctrl.Result{}, fmt.Errorf("error reconciling role bindings: %w", err)
 	}
 
+	certificate, err := r.reconcileCertificate(ctx, obj)
+	if err != nil {
+		logger.Error(err, "failed to reconcile certificate request in namespace")
+		conditions.MarkStalled(obj, mpasv1alpha1.CertificateCreateOrUpdateFailedReason, err.Error())
+		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.CertificateCreateOrUpdateFailedReason, err.Error())
+		return ctrl.Result{}, fmt.Errorf("error reconciling certificate: %w", err)
+	}
+
 	repo, err := r.reconcileRepository(ctx, obj)
 	if err != nil {
 		logger.Error(err, "failed to reconcile repository")
@@ -204,13 +226,17 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		conditions.MarkUnknown(obj, meta.ReadyCondition, meta.ProgressingReason, "reconciliation in progress")
 		conditions.MarkReconciling(obj, mpasv1alpha1.WaitingOnResourcesReason, "waiting for resources to be ready")
 		if err := r.patch(ctx, obj, sp); err != nil {
+			if apierrors.IsNotFound(err) {
+				return ctrl.Result{}, nil
+			}
+
 			return ctrl.Result{}, fmt.Errorf("failed to patch object: %w", err)
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
 
 	newInventory := inventory.New()
-	if err := inventory.Add(newInventory, ns, sa, role, repo, gitRepo); err != nil {
+	if err := inventory.Add(newInventory, ns, sa, role, certificate, repo, gitRepo); err != nil {
 		logger.Error(err, "failed to add resources to inventory")
 		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.ReconciliationFailedReason, err.Error())
 		return ctrl.Result{}, fmt.Errorf("error adding resources to inventory: %w", err)
@@ -649,7 +675,7 @@ func (r *ProjectReconciler) finalizeStatus(ctx context.Context, obj *mpasv1alpha
 }
 
 func (r *ProjectReconciler) patch(ctx context.Context, obj *mpasv1alpha1.Project, patcher *patch.SerialPatcher) error {
-	opts := []patch.Option{}
+	var opts []patch.Option
 	ownedConditions := []string{
 		meta.ReadyCondition,
 		meta.ReconcilingCondition,
@@ -665,4 +691,40 @@ func (r *ProjectReconciler) patch(ctx context.Context, obj *mpasv1alpha1.Project
 	}
 
 	return nil
+}
+
+func (r *ProjectReconciler) reconcileCertificate(ctx context.Context, obj *mpasv1alpha1.Project) (*certmanagerv1.Certificate, error) {
+	namespace := obj.GetNameWithPrefix(r.Prefix)
+	issuerName := r.IssuerName
+
+	// Note: Using unstructured here, because cert-manager does not expose their APIs.
+	cert := &certmanagerv1.Certificate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ocm-registry-tls-certs",
+			Namespace: namespace,
+		},
+	}
+
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cert, func() error {
+		// Make sure the fields are all up-to-date
+		cert.Spec = certmanagerv1.CertificateSpec{
+			DNSNames:   []string{r.RegistryAddr},
+			SecretName: "ocm-registry-tls-certs",
+			IssuerRef: v1.ObjectReference{
+				Name:  issuerName,
+				Kind:  "ClusterIssuer",
+				Group: "cert-manager.io",
+			},
+			PrivateKey: &certmanagerv1.CertificatePrivateKey{
+				Algorithm: certmanagerv1.ECDSAKeyAlgorithm,
+				Size:      256,
+			},
+		}
+
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("failed to create certificate request in namespace: %w", err)
+	}
+
+	return cert, nil
 }
