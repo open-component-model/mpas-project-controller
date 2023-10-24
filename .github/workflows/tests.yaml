@@ -28,9 +28,9 @@ jobs:
           app_id: ${{ secrets.OCMBOT_APP_ID }}
           private_key: ${{ secrets.OCMBOT_PRIV_KEY }}
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version-file: '${{ github.workspace }}/go.mod'
       - name: Restore Go cache
