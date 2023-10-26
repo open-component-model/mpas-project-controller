@@ -26,7 +26,7 @@ func TestSecretsReconciler_Reconcile(t *testing.T) {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace",
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				v1alpha1.ProjectKey: "test-project",
 			},
 		},

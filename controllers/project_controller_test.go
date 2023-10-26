@@ -142,6 +142,6 @@ func TestProjectNamespaceAnnotation(t *testing.T) {
 	err = client.Get(context.Background(), types.NamespacedName{Name: name}, ns)
 	require.NoError(t, err)
 
-	_, ok := ns.Annotations[mpasv1alpha1.ProjectKey]
+	_, ok := ns.Labels[mpasv1alpha1.ProjectKey]
 	assert.True(t, ok)
 }

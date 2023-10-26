@@ -25,7 +25,7 @@ func (r *SecretsReconciler) GetProjectFromObjectNamespace(ctx context.Context, c
 		return nil, fmt.Errorf("failed to retrieve namespace for object: %w", err)
 	}
 
-	v, ok := ns.Annotations[v1alpha1.ProjectKey]
+	v, ok := ns.Labels[v1alpha1.ProjectKey]
 	if !ok {
 		return nil, errNotProjectNamespace
 	}
