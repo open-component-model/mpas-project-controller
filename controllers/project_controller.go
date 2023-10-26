@@ -290,12 +290,12 @@ func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1a
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ns, func() error {
-		if _, ok := ns.Annotations[mpasv1alpha1.ProjectKey]; !ok {
-			if ns.Annotations == nil {
-				ns.Annotations = make(map[string]string)
+		if _, ok := ns.Labels[mpasv1alpha1.ProjectKey]; !ok {
+			if ns.Labels == nil {
+				ns.Labels = make(map[string]string)
 			}
 
-			ns.Annotations[mpasv1alpha1.ProjectKey] = obj.Name
+			ns.Labels[mpasv1alpha1.ProjectKey] = obj.Name
 		}
 
 		return nil
