@@ -41,6 +41,16 @@ const (
 	ControllerServiceAccountName = "mpas-project-controller"
 )
 
+const (
+	// Mandatory Labels
+	labelComponent = "app.kubernetes.io/component"
+	labelCreatedBy = "app.kubernetes.io/created-by"
+	labelManagedBy = "app.kubernetes.io/managed-by"
+	labelInstance  = "app.kubernetes.io/instance"
+	labelName      = "app.kubernetes.io/name"
+	labelPartOf    = "app.kubernetes.io/part-of"
+)
+
 // ProjectReconciler reconciles a Project object
 type ProjectReconciler struct {
 	client.Client
@@ -290,13 +300,15 @@ func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1a
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ns, func() error {
-		if _, ok := ns.Labels[mpasv1alpha1.ProjectKey]; !ok {
-			if ns.Labels == nil {
-				ns.Labels = make(map[string]string)
-			}
+		if ns.Labels == nil {
+			ns.Labels = make(map[string]string)
+		}
 
+		if _, ok := ns.Labels[mpasv1alpha1.ProjectKey]; !ok {
 			ns.Labels[mpasv1alpha1.ProjectKey] = obj.Name
 		}
+
+		r.applyMandatoryLabels("namespace", "namespace", "namespace", ns.Labels)
 
 		return nil
 	})
@@ -320,6 +332,12 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 	// Get the service account, if it doesn't exist, create it,
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, sa, func() error {
+		if sa.Labels == nil {
+			sa.Labels = make(map[string]string)
+		}
+
+		r.applyMandatoryLabels("serviceaccount", "rbac", "serviceaccount", sa.Labels)
+
 		return nil
 	})
 
@@ -368,6 +386,12 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 			},
 		}
+
+		if role.Labels == nil {
+			role.Labels = make(map[string]string)
+		}
+
+		r.applyMandatoryLabels("role", "rbac", "role", role.Labels)
 
 		return nil
 	})
@@ -418,6 +442,11 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 			APIGroup: "rbac.authorization.k8s.io",
 		}
 
+		if mpasRoleBinding.Labels == nil {
+			mpasRoleBinding.Labels = make(map[string]string)
+		}
+		r.applyMandatoryLabels("clusterrole", "rbac", "clusterrole", mpasRoleBinding.Labels)
+
 		return nil
 	})
 
@@ -447,6 +476,11 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 			APIGroup: "rbac.authorization.k8s.io",
 		}
 
+		if projectRoleBindingCR.Labels == nil {
+			projectRoleBindingCR.Labels = make(map[string]string)
+		}
+		r.applyMandatoryLabels("clusterrole", "rbac", "clusterrole", projectRoleBindingCR.Labels)
+
 		return nil
 	})
 
@@ -475,6 +509,11 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 			Name:     name,
 			APIGroup: "rbac.authorization.k8s.io",
 		}
+
+		if projectRoleBinding.Labels == nil {
+			projectRoleBinding.Labels = make(map[string]string)
+		}
+		r.applyMandatoryLabels("role", "rbac", "role", projectRoleBinding.Labels)
 
 		return nil
 	})
@@ -513,6 +552,11 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 			}
 		}
 
+		if repo.Labels == nil {
+			repo.Labels = make(map[string]string)
+		}
+		r.applyMandatoryLabels("repository", "manager", "repository", repo.Labels)
+
 		return nil
 	})
 
@@ -546,6 +590,11 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 		}
 		gitRepo.Spec.SecretRef = (*meta.LocalObjectReference)(&repo.Spec.Credentials.SecretRef)
 		gitRepo.Spec.Interval = obj.Spec.Flux.Interval
+
+		if gitRepo.Labels == nil {
+			gitRepo.Labels = make(map[string]string)
+		}
+		r.applyMandatoryLabels("gitrepository", "manager", "gitrepository", gitRepo.Labels)
 
 		return nil
 	})
@@ -587,6 +636,11 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 			}
 			kustomization.Spec.ServiceAccountName = ControllerServiceAccountName
 			kustomization.Spec.TargetNamespace = prefixedName
+
+			if kustomization.Labels == nil {
+				kustomization.Labels = make(map[string]string)
+			}
+			r.applyMandatoryLabels("kustomization", "manager", "kustomization", kustomization.Labels)
 
 			return nil
 		})
@@ -733,4 +787,13 @@ func (r *ProjectReconciler) reconcileCertificate(ctx context.Context, obj *mpasv
 	}
 
 	return cert, nil
+}
+
+func (r *ProjectReconciler) applyMandatoryLabels(name, component, instance string, labels map[string]string) {
+	labels[labelComponent] = component
+	labels[labelInstance] = instance
+	labels[labelCreatedBy] = "mpas-project-controller"
+	labels[labelManagedBy] = "mpas-project-controller"
+	labels[labelPartOf] = "mpas-project-controller"
+	labels[labelName] = name
 }
