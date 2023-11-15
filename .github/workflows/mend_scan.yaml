@@ -69,7 +69,6 @@ jobs:
         }
         EOF
         )
-        set -x
         
         login_token=$(curl -X POST 'https://api-sap.whitesourcesoftware.com/api/v2.0/login' \
         --header 'Content-Type: application/json' --silent \
