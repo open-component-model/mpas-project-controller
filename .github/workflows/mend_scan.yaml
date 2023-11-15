@@ -69,6 +69,7 @@ jobs:
         }
         EOF
         )
+        set -x
         
         login_token=$(curl -X POST 'https://api-sap.whitesourcesoftware.com/api/v2.0/login' \
         --header 'Content-Type: application/json' --silent \
@@ -86,7 +87,6 @@ jobs:
         high_license_risk=$(curl -X GET "https://api-sap.whitesourcesoftware.com/api/v2.0/projects/${projectKey}/libraries/licenses?pageSize=1000" \
         --header 'Content-Type: application/json' --silent --header "Authorization: Bearer ${login_token}")
 
-        set -x
         security_vulnerability_no=$(echo "${security_vulnerability}" | jq .additionalData.totalItems )
         major_updates_pending_no=$(echo "${major_updates_pending}" | jq -r .additionalData.totalItems )
         requires_review_no=$(echo "${requires_review}" | jq -r .additionalData.totalItems )
