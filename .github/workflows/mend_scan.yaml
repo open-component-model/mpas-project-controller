@@ -56,10 +56,10 @@ jobs:
 
     - name: Generate Report
       env:
-        USER_KEY: ${{ secrets.MEND_USER_KEY }}
+        USER_KEY: ${{ secrets.MEND_API_USER_KEY }}
         PROJECT_TOKEN: ${{ secrets.MEND_PROJECT_TOKEN_MPAS_PROJECT_CONTR }}
-        API_KEY: ${{ secrets.MEND_API_TOKEN }}
-        EMAIL: ${{ secrets.MEND_EMAIL }}
+        API_KEY: ${{ secrets.MEND_API_ORG_TOKEN }}
+        EMAIL: ${{ secrets.MEND_API_EMAIL }}
       run: |
         data=$(cat <<EOF
         {
