@@ -1,20 +1,6 @@
 name: Mend Security Scan
 
 on:
-  push:
-    branches:
-      - feature/test-mend
-  workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Log level'
-        required: true
-        default: 'debug'
-        type: choice
-        options:
-        - info
-        - warning
-        - debug
   schedule:
     - cron:  '25 0 * * 0'
 
