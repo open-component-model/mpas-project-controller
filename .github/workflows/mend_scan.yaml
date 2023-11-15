@@ -1,6 +1,9 @@
 name: Mend Security Scan
 
 on:
+  push:
+    branches:
+      - feature/test-mend
   workflow_dispatch:
     inputs:
       logLevel:
