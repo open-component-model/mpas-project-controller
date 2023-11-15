@@ -74,24 +74,20 @@ jobs:
         --data "${data}" | jq -r .retVal.jwtToken )
         
         security_vulnerability=$(curl -X GET "https://api-sap.whitesourcesoftware.com/api/v2.0/projects/${projectKey}/alerts/security?search=status%3Aequals%3AACTIVE%3Bscore%3Abetween%3A6%2C10%3B" \
-        --header 'Content-Type: application/json' --silent \
-        --header "Authorization: Bearer ${login_token}")
+        --header 'Content-Type: application/json' --silent --header "Authorization: Bearer ${login_token}")
         
         major_updates_pending=$(curl -X GET "https://api-sap.whitesourcesoftware.com/api/v2.0/projects/${projectKey}/alerts/legal?search=status%3Aequals%3AACTIVE%3BavailableVersionType%3Aequals%3AMAJOR" \
-        --header 'Content-Type: application/json' --silent \
-        --header "Authorization: Bearer ${login_token}" )
+        --header 'Content-Type: application/json' --silent --header "Authorization: Bearer ${login_token}" )
         
         requires_review=$(curl -X GET "https://api-sap.whitesourcesoftware.com/api/v2.0/projects/${projectKey}/libraries/licenses?search=license%3Aequals%3ARequires%20Review" \
-        --header 'Content-Type: application/json' --silent \
-        --header "Authorization: Bearer ${login_token}")
+        --header 'Content-Type: application/json' --silent --header "Authorization: Bearer ${login_token}")
         
         high_license_risk=$(curl -X GET "https://api-sap.whitesourcesoftware.com/api/v2.0/projects/${projectKey}/libraries/licenses?pageSize=1000" \
-        --header 'Content-Type: application/json' --silent \
-        --header "Authorization: Bearer ${login_token}")
+        --header 'Content-Type: application/json' --silent --header "Authorization: Bearer ${login_token}")
         
         security_vulnerability_no=$(echo "${security_vulnerability}" | jq .additionalData.totalItems )
         major_updates_pending_no=$(echo "${major_updates_pending}" | jq -r .additionalData.totalItems )
-        requires_review_no=$(echo "${requires_review}" |jq -r .additionalData.totalItems )
+        requires_review_no=$(echo "${requires_review}" | jq -r .additionalData.totalItems )
         high_license_risk_no=$(echo "${high_license_risk}" | jq -r '.retVal[].riskScore.riskScore | select( . != null ) >52 '| wc -l )
   
         function print {
