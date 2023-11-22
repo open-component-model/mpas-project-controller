@@ -95,6 +95,7 @@ func Diff(source *mpasv1alpha1.ResourceInventory, target *mpasv1alpha1.ResourceI
 				return entry.Version
 			}
 		}
+
 		return ""
 	}
 
@@ -124,5 +125,6 @@ func Diff(source *mpasv1alpha1.ResourceInventory, target *mpasv1alpha1.ResourceI
 	}
 
 	sort.Sort(ssa.SortableUnstructureds(objects))
+
 	return objects, nil
 }

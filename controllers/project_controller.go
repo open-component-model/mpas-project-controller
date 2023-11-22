@@ -6,7 +6,7 @@ package controllers
 
 import (
 	"context"
-	_ "embed"
+	_ "embed" // embedding
 	"errors"
 	"fmt"
 
@@ -38,11 +38,11 @@ import (
 )
 
 const (
-	ControllerServiceAccountName = "mpas-project-controller"
+	ControllerName = "mpas-project-controller"
 )
 
 const (
-	// Mandatory Labels
+	// Mandatory Labels.
 	labelComponent = "app.kubernetes.io/component"
 	labelCreatedBy = "app.kubernetes.io/created-by"
 	labelManagedBy = "app.kubernetes.io/managed-by"
@@ -51,7 +51,7 @@ const (
 	labelPartOf    = "app.kubernetes.io/part-of"
 )
 
-// ProjectReconciler reconciles a Project object
+// ProjectReconciler reconciles a Project object.
 type ProjectReconciler struct {
 	client.Client
 	Scheme                *runtime.Scheme
@@ -66,9 +66,12 @@ type ProjectReconciler struct {
 //+kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;secrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=get;list;watch
+//nolint:lll // rbac comment
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects;targets;repositories;productdeployments;productdeploymentgenerators;productdeploymentpipelines,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=subscriptions,verbs=get;list;watch
+//nolint:lll // rbac comment
 //+kubebuilder:rbac:groups=delivery.ocm.software,resources=componentsubscriptions;componentversions;configurations;localizations,verbs=get;list;watch;create;update;patch;delete
+//nolint:lll // rbac comment
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io;kustomize.toolkit.fluxcd.io,resources=gitrepositories;ocirepositories;kustomizations,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mpas.ocm.software,resources=projects/finalizers,verbs=update
@@ -98,11 +101,12 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 	obj := &mpasv1alpha1.Project{}
 	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
 		if apierrors.IsNotFound(err) {
-			return
+			return ctrl.Result{}, nil
 		}
+
 		return ctrl.Result{}, fmt.Errorf("failed to get project %s/%s: %w", req.NamespacedName.Namespace, req.NamespacedName.Name, err)
 	}
-	//Initialize the patch helper with the current version of the object.
+	// Initialize the patch helper with the current version of the object.
 	patchHelper := patch.NewSerialPatcher(obj, r.Client)
 
 	defer func() {
@@ -113,12 +117,14 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 
 	if !controllerutil.ContainsFinalizer(obj, mpasv1alpha1.ProjectFinalizer) {
 		controllerutil.AddFinalizer(obj, mpasv1alpha1.ProjectFinalizer)
+
 		return ctrl.Result{Requeue: true}, nil
 	}
 
 	if obj.DeletionTimestamp != nil {
 		logger.Info("project is being deleted...")
-		return r.finalize(ctx, obj)
+
+		return ctrl.Result{}, r.finalize(ctx, obj)
 	}
 
 	return r.reconcile(ctx, obj, patchHelper)
@@ -161,73 +167,9 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 		obj.Status.Inventory.DeepCopyInto(oldInventory)
 	}
 
-	ns, err := r.reconcileNamespace(ctx, obj)
+	objects, err := r.reconcileInventory(ctx, obj)
 	if err != nil {
-		logger.Error(err, "failed to reconcile namespace")
-		conditions.MarkStalled(obj, mpasv1alpha1.NamespaceCreateOrUpdateFailedReason, err.Error())
-		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.NamespaceCreateOrUpdateFailedReason, err.Error())
-		return ctrl.Result{}, fmt.Errorf("error reconciling namespace: %w", err)
-	}
-
-	sa, err := r.reconcileServiceAccount(ctx, obj)
-	if err != nil {
-		logger.Error(err, "failed to reconcile service account")
-		conditions.MarkStalled(obj, mpasv1alpha1.ServiceAccountCreateOrUpdateFailedReason, err.Error())
-		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.ServiceAccountCreateOrUpdateFailedReason, err.Error())
-		return ctrl.Result{}, fmt.Errorf("error reconciling service account: %w", err)
-	}
-
-	role, err := r.reconcileRole(ctx, obj)
-	if err != nil {
-		logger.Error(err, "failed to reconcile role")
-		conditions.MarkStalled(obj, mpasv1alpha1.RBACCreateOrUpdateFailedReason, err.Error())
-		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.RBACCreateOrUpdateFailedReason, err.Error())
-		return ctrl.Result{}, fmt.Errorf("error reconciling project namespace role: %w", err)
-	}
-
-	roleBindings, err := r.reconcileRoleBindings(ctx, obj, sa)
-	if err != nil {
-		logger.Error(err, "failed to reconcile cluster role binding")
-		conditions.MarkStalled(obj, mpasv1alpha1.RBACCreateOrUpdateFailedReason, err.Error())
-		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.RBACCreateOrUpdateFailedReason, err.Error())
-		return ctrl.Result{}, fmt.Errorf("error reconciling role bindings: %w", err)
-	}
-
-	certificate, err := r.reconcileCertificate(ctx, obj)
-	if err != nil {
-		logger.Error(err, "failed to reconcile certificate request in namespace")
-		conditions.MarkStalled(obj, mpasv1alpha1.CertificateCreateOrUpdateFailedReason, err.Error())
-		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.CertificateCreateOrUpdateFailedReason, err.Error())
-		return ctrl.Result{}, fmt.Errorf("error reconciling certificate: %w", err)
-	}
-
-	repo, err := r.reconcileRepository(ctx, obj)
-	if err != nil {
-		logger.Error(err, "failed to reconcile repository")
-		conditions.MarkStalled(obj, mpasv1alpha1.RepositoryCreateOrUpdateFailedReason, err.Error())
-		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.RepositoryCreateOrUpdateFailedReason, err.Error())
-		return ctrl.Result{}, fmt.Errorf("error reconciling repository: %w", err)
-	}
-
-	obj.Status.RepositoryRef = &meta.NamespacedObjectReference{
-		Name:      repo.GetName(),
-		Namespace: repo.GetNamespace(),
-	}
-
-	gitRepo, err := r.reconcileFluxGitRepository(ctx, obj, repo)
-	if err != nil {
-		logger.Error(err, "failed to reconcile flux git repository")
-		conditions.MarkStalled(obj, mpasv1alpha1.FluxGitRepositoryCreateOrUpdateFailedReason, err.Error())
-		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.FluxGitRepositoryCreateOrUpdateFailedReason, err.Error())
-		return ctrl.Result{}, fmt.Errorf("error reconciling flux git source: %w", err)
-	}
-
-	kustomizations, err := r.reconcileFluxKustomizations(ctx, obj)
-	if err != nil {
-		logger.Error(err, "failed to reconcile flux kustomizations")
-		conditions.MarkStalled(obj, mpasv1alpha1.FluxKustomizationsCreateOrUpdateFailedReason, err.Error())
-		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.FluxKustomizationsCreateOrUpdateFailedReason, err.Error())
-		return ctrl.Result{}, fmt.Errorf("error reconciling flux kustomizations: %w", err)
+		return ctrl.Result{}, err
 	}
 
 	// Requeue the project only if it was previously not requeued in order to wait for resources to be created.
@@ -243,29 +185,17 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 
 			return ctrl.Result{}, fmt.Errorf("failed to patch object: %w", err)
 		}
+
 		return ctrl.Result{Requeue: true}, nil
 	}
 
 	newInventory := inventory.New()
-	if err := inventory.Add(newInventory, ns, sa, role, certificate, repo, gitRepo); err != nil {
-		logger.Error(err, "failed to add resources to inventory")
+	if err := inventory.Add(newInventory, objects...); err != nil {
 		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.ReconciliationFailedReason, err.Error())
+
 		return ctrl.Result{}, fmt.Errorf("error adding resources to inventory: %w", err)
 	}
-	for _, roleBinding := range roleBindings {
-		if err := inventory.Add(newInventory, roleBinding); err != nil {
-			logger.Error(err, "failed to add resources to inventory")
-			conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.ReconciliationFailedReason, err.Error())
-			return ctrl.Result{}, fmt.Errorf("error adding resources to inventory: %w", err)
-		}
-	}
-	for _, kustomization := range kustomizations {
-		if err := inventory.Add(newInventory, kustomization); err != nil {
-			logger.Error(err, "failed to add resources to inventory")
-			conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.ReconciliationFailedReason, err.Error())
-			return ctrl.Result{}, fmt.Errorf("error adding resources to inventory: %w", err)
-		}
-	}
+
 	obj.Status.Inventory = newInventory
 	obj.Status.ObservedGeneration = obj.Generation
 
@@ -274,6 +204,7 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 	staleObjects, err := inventory.Diff(oldInventory, newInventory)
 	if err != nil {
 		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.ReconciliationFailedReason, err.Error())
+
 		return ctrl.Result{}, fmt.Errorf("error generating inventory diff inventory: %w", err)
 	}
 
@@ -281,6 +212,7 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 	// Garbage collect stale objects, as long as prune it set to true.
 	if err := r.prune(ctx, obj, staleObjects); err != nil {
 		conditions.MarkFalse(obj, meta.ReadyCondition, mpasv1alpha1.ReconciliationFailedReason, err.Error())
+
 		return ctrl.Result{}, fmt.Errorf("error pruning stale objects: %w", err)
 	}
 
@@ -289,6 +221,11 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, obj *mpasv1alpha1.Pro
 	conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Reconciliation success")
 
 	return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
+}
+
+func (r *ProjectReconciler) markStalled(reason string, obj *mpasv1alpha1.Project, err error) {
+	conditions.MarkStalled(obj, reason, err.Error())
+	conditions.MarkFalse(obj, meta.ReadyCondition, reason, err.Error())
 }
 
 func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1alpha1.Project) (*corev1.Namespace, error) {
@@ -312,7 +249,6 @@ func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, obj *mpasv1a
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create namespace: %w", err)
 	}
@@ -340,7 +276,6 @@ func (r *ProjectReconciler) reconcileServiceAccount(ctx context.Context, obj *mp
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create or update service account: %w", err)
 	}
@@ -395,7 +330,6 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create or update role: %w", err)
 	}
@@ -403,7 +337,11 @@ func (r *ProjectReconciler) reconcileRole(ctx context.Context, obj *mpasv1alpha1
 	return role, nil
 }
 
-func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpasv1alpha1.Project, sa *corev1.ServiceAccount) ([]*rbacv1.RoleBinding, error) {
+func (r *ProjectReconciler) reconcileRoleBindings(
+	ctx context.Context,
+	obj *mpasv1alpha1.Project,
+	sa *corev1.ServiceAccount,
+) ([]*rbacv1.RoleBinding, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
 	key := types.NamespacedName{
 		Name: r.ClusterRoleName,
@@ -449,7 +387,6 @@ func (r *ProjectReconciler) reconcileRoleBindings(ctx context.Context, obj *mpas
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create or update role binding: %w", err)
 	}
@@ -559,7 +496,6 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create or update repository: %w", err)
 	}
@@ -567,7 +503,11 @@ func (r *ProjectReconciler) reconcileRepository(ctx context.Context, obj *mpasv1
 	return repo, nil
 }
 
-func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj *mpasv1alpha1.Project, repo *gcv1alpha1.Repository) (*sourcev1.GitRepository, error) {
+func (r *ProjectReconciler) reconcileFluxGitRepository(
+	ctx context.Context,
+	obj *mpasv1alpha1.Project,
+	repo *gcv1alpha1.Repository,
+) (*sourcev1.GitRepository, error) {
 	name := obj.GetNameWithPrefix(r.Prefix)
 
 	gitRepo := &sourcev1.GitRepository{
@@ -598,7 +538,6 @@ func (r *ProjectReconciler) reconcileFluxGitRepository(ctx context.Context, obj 
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create or update repository: %w", err)
 	}
@@ -634,7 +573,7 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 				Name:      prefixedName,
 				Namespace: obj.GetNamespace(),
 			}
-			kustomization.Spec.ServiceAccountName = ControllerServiceAccountName
+			kustomization.Spec.ServiceAccountName = ControllerName
 			kustomization.Spec.TargetNamespace = prefixedName
 
 			if kustomization.Labels == nil {
@@ -644,7 +583,6 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 
 			return nil
 		})
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to create or update kustomization: %w", err)
 		}
@@ -655,36 +593,30 @@ func (r *ProjectReconciler) reconcileFluxKustomizations(ctx context.Context, obj
 	return kustomizations, nil
 }
 
-func (r *ProjectReconciler) finalize(ctx context.Context, obj *mpasv1alpha1.Project) (ctrl.Result, error) {
+func (r *ProjectReconciler) finalize(ctx context.Context, obj *mpasv1alpha1.Project) error {
 	logger := log.FromContext(ctx)
 	var retErr error
-	if obj.Spec.Prune &&
-		obj.Status.Inventory != nil &&
-		obj.Status.Inventory.Entries != nil {
+	if obj.Spec.Prune && obj.Status.Inventory != nil && obj.Status.Inventory.Entries != nil {
 		objects, _ := inventory.List(obj.Status.Inventory)
 
 		for _, object := range objects {
-			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(object), object); err != nil {
+			if err := r.Client.Delete(ctx, object); err != nil {
 				if !apierrors.IsNotFound(err) {
-					logger.Error(err, "failed to get object for deletion")
+					logger.Error(err, "failed to delete object", "object", object)
 					retErr = errors.Join(retErr, err)
 				}
-			}
-
-			if err := r.Client.Delete(ctx, object); err != nil {
-				logger.Error(err, "failed to delete object", "object", object)
-				retErr = errors.Join(retErr, err)
 			}
 		}
 
 		if retErr != nil {
-			return ctrl.Result{}, retErr
+			return retErr
 		}
 	}
 
 	// Remove our finalizer from the list and update it
 	controllerutil.RemoveFinalizer(obj, mpasv1alpha1.ProjectFinalizer)
-	return ctrl.Result{}, nil
+
+	return nil
 }
 
 func (r *ProjectReconciler) prune(ctx context.Context, obj *mpasv1alpha1.Project, staleObjects []*unstructured.Unstructured) error {
@@ -767,6 +699,7 @@ func (r *ProjectReconciler) reconcileCertificate(ctx context.Context, obj *mpasv
 
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cert, func() error {
 		// Make sure the fields are all up-to-date
+		const keySize = 256
 		cert.Spec = certmanagerv1.CertificateSpec{
 			DNSNames:   []string{r.RegistryAddr},
 			SecretName: "ocm-registry-tls-certs",
@@ -777,7 +710,7 @@ func (r *ProjectReconciler) reconcileCertificate(ctx context.Context, obj *mpasv
 			},
 			PrivateKey: &certmanagerv1.CertificatePrivateKey{
 				Algorithm: certmanagerv1.ECDSAKeyAlgorithm,
-				Size:      256,
+				Size:      keySize,
 			},
 		}
 
@@ -792,8 +725,85 @@ func (r *ProjectReconciler) reconcileCertificate(ctx context.Context, obj *mpasv
 func (r *ProjectReconciler) applyMandatoryLabels(name, component, instance string, labels map[string]string) {
 	labels[labelComponent] = component
 	labels[labelInstance] = instance
-	labels[labelCreatedBy] = "mpas-project-controller"
-	labels[labelManagedBy] = "mpas-project-controller"
-	labels[labelPartOf] = "mpas-project-controller"
+	labels[labelCreatedBy] = ControllerName
+	labels[labelManagedBy] = ControllerName
+	labels[labelPartOf] = ControllerName
 	labels[labelName] = name
+}
+
+func (r *ProjectReconciler) reconcileInventory(ctx context.Context, obj *mpasv1alpha1.Project) ([]runtime.Object, error) {
+	var result []runtime.Object
+
+	ns, err := r.reconcileNamespace(ctx, obj)
+	if err != nil {
+		r.markStalled(mpasv1alpha1.NamespaceCreateOrUpdateFailedReason, obj, err)
+
+		return nil, fmt.Errorf("error reconciling namespace: %w", err)
+	}
+
+	sa, err := r.reconcileServiceAccount(ctx, obj)
+	if err != nil {
+		r.markStalled(mpasv1alpha1.ServiceAccountCreateOrUpdateFailedReason, obj, err)
+
+		return nil, fmt.Errorf("error reconciling service account: %w", err)
+	}
+
+	role, err := r.reconcileRole(ctx, obj)
+	if err != nil {
+		r.markStalled(mpasv1alpha1.RBACCreateOrUpdateFailedReason, obj, err)
+
+		return nil, fmt.Errorf("error reconciling project namespace role: %w", err)
+	}
+
+	roleBindings, err := r.reconcileRoleBindings(ctx, obj, sa)
+	if err != nil {
+		r.markStalled(mpasv1alpha1.RBACCreateOrUpdateFailedReason, obj, err)
+
+		return nil, fmt.Errorf("error reconciling role bindings: %w", err)
+	}
+
+	certificate, err := r.reconcileCertificate(ctx, obj)
+	if err != nil {
+		r.markStalled(mpasv1alpha1.CertificateCreateOrUpdateFailedReason, obj, err)
+
+		return nil, fmt.Errorf("error reconciling certificate: %w", err)
+	}
+
+	repo, err := r.reconcileRepository(ctx, obj)
+	if err != nil {
+		r.markStalled(mpasv1alpha1.RepositoryCreateOrUpdateFailedReason, obj, err)
+
+		return nil, fmt.Errorf("error reconciling repository: %w", err)
+	}
+
+	obj.Status.RepositoryRef = &meta.NamespacedObjectReference{
+		Name:      repo.GetName(),
+		Namespace: repo.GetNamespace(),
+	}
+
+	gitRepo, err := r.reconcileFluxGitRepository(ctx, obj, repo)
+	if err != nil {
+		r.markStalled(mpasv1alpha1.FluxGitRepositoryCreateOrUpdateFailedReason, obj, err)
+
+		return nil, fmt.Errorf("error reconciling flux git source: %w", err)
+	}
+
+	kustomizations, err := r.reconcileFluxKustomizations(ctx, obj)
+	if err != nil {
+		r.markStalled(mpasv1alpha1.FluxKustomizationsCreateOrUpdateFailedReason, obj, err)
+
+		return nil, fmt.Errorf("error reconciling flux kustomizations: %w", err)
+	}
+
+	result = append(result, ns, sa, role, certificate, repo, gitRepo)
+
+	for _, k := range kustomizations {
+		result = append(result, k)
+	}
+
+	for _, r := range roleBindings {
+		result = append(result, r)
+	}
+
+	return result, nil
 }

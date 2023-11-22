@@ -60,5 +60,6 @@ func checkAnnotation(obj client.Object) bool {
 	}
 
 	_, ok = secret.Annotations[v1alpha1.ManagedMPASSecretAnnotationKey]
+
 	return ok
 }

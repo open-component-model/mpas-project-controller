@@ -14,7 +14,7 @@ const (
 	ServiceAccountCreateOrUpdateFailedReason string = "ServiceAccountCreateOrUpdateFailed"
 
 	// RBACCreateOrUpdateFailedReason indicates that the project cluster role could not be reconciled.
-	RBACCreateOrUpdateFailedReason string = "RBACCreateOrUpdateFailed"
+	RBACCreateOrUpdateFailedReason string = "RBACCreateOrUpdateFailed" //nolint:gosec // not a cred
 
 	// CertificateCreateOrUpdateFailedReason indicates that the project certificate could not be reconciled.
 	CertificateCreateOrUpdateFailedReason string = "CertificateCreateOrUpdateFailed"
