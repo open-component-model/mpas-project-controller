@@ -27,7 +27,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Project is the Schema for the projects API
+        description: Project is the Schema for the projects API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -42,7 +42,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ProjectSpec defines the desired state of Project
+            description: ProjectSpec defines the desired state of Project.
             properties:
               flux:
                 default:
@@ -143,7 +143,7 @@ spec:
             - git
             type: object
           status:
-            description: ProjectStatus defines the observed state of Project
+            description: ProjectStatus defines the observed state of Project.
             properties:
               conditions:
                 items:

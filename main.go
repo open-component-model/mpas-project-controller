@@ -13,15 +13,14 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 
 	gcv1alpha1 "github.com/open-component-model/git-controller/apis/mpas/v1alpha1"
 	mpasv1alpha1 "github.com/open-component-model/mpas-project-controller/api/v1alpha1"
@@ -60,19 +59,59 @@ func main() {
 		certificateIssuerName string
 	)
 
-	flag.StringVar(&certificateIssuerName, "certificate-issuer-name", "mpas-certificate-issuer", "The name of the ClusterIssuer to request certificates from. By default this is created by the MPAS Bootstrap command.")
-	flag.StringVar(&registryAddress, "registry-address", "registry.ocm-system.svc.cluster.local", "The address of the internal registry. This is used for the certificate DNS names.")
+	flag.StringVar(
+		&certificateIssuerName,
+		"certificate-issuer-name",
+		"mpas-certificate-issuer",
+		"The name of the ClusterIssuer to request certificates from. By default this is created by the MPAS Bootstrap command.",
+	)
+	flag.StringVar(
+		&registryAddress,
+		"registry-address",
+		"registry.ocm-system.svc.cluster.local",
+		"The address of the internal registry. This is used for the certificate DNS names.",
+	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&clusterRoleName, "cluster-role-name", "mpas-projects-clusterrole", "The name of the cluster role to use for project ServiceAccounts.")
-	flag.StringVar(&prefix, "prefix", "mpas", "The prefix to use for all resources and Git repositories created by the controller.")
-	flag.StringVar(&defaultCommitName, "default-commit-name", "MPAS System", "The name to use for automated commits if one is not provided in the Project spec.")
-	flag.StringVar(&defaultCommitEmail, "default-commit-email", "automated@ocm.software", "The email address to use for automated commits if one is not provided in the Project spec.")
-	flag.StringVar(&defaultCommitMessage, "default-commit-message", "Automated commit by MPAS Project Controller", "The commit message to use for automated commits if one is not provided in the Project spec.")
-	flag.StringVar(&defaultNamespace, "default-namespace", "mpas-system", "The namespace in which this controller is running in. This namespace is used to locate Project objects.")
+	flag.StringVar(
+		&clusterRoleName,
+		"cluster-role-name",
+		"mpas-projects-clusterrole",
+		"The name of the cluster role to use for project ServiceAccounts.",
+	)
+	flag.StringVar(
+		&prefix,
+		"prefix",
+		"mpas",
+		"The prefix to use for all resources and Git repositories created by the controller.",
+	)
+	flag.StringVar(
+		&defaultCommitName,
+		"default-commit-name",
+		"MPAS System",
+		"The name to use for automated commits if one is not provided in the Project spec.",
+	)
+	flag.StringVar(
+		&defaultCommitEmail,
+		"default-commit-email",
+		"automated@ocm.software",
+		"The email address to use for automated commits if one is not provided in the Project spec.",
+	)
+	flag.StringVar(
+		&defaultCommitMessage,
+		"default-commit-message",
+		"Automated commit by MPAS Project Controller",
+		"The commit message to use for automated commits if one is not provided in the Project spec.",
+	)
+	flag.StringVar(
+		&defaultNamespace,
+		"default-namespace",
+		"mpas-system",
+		"The namespace in which this controller is running in. This namespace is used to locate Project objects.",
+	)
 
 	opts := zap.Options{
 		Development: true,
@@ -82,10 +121,11 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	const metricsServerPort = 9443
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Port:                   metricsServerPort,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "bccfd20b.ocm.software",

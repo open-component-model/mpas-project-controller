@@ -23,7 +23,7 @@ const (
 // ExistingRepositoryPolicy defines what to do in case a requested repository already exists.
 type ExistingRepositoryPolicy string
 
-// ProjectSpec defines the desired state of Project
+// ProjectSpec defines the desired state of Project.
 type ProjectSpec struct {
 	// +required
 	Git gcv1alpha1.RepositorySpec `json:"git"`
@@ -51,7 +51,7 @@ type CommitTemplate struct {
 	Message string
 }
 
-// ProjectStatus defines the observed state of Project
+// ProjectStatus defines the observed state of Project.
 type ProjectStatus struct {
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
@@ -78,15 +78,17 @@ func (in *Project) GetServiceAccountNamespacedName() (types.NamespacedName, erro
 	}
 
 	var name, namespace string
+	const nameNamespaceCount = 2
 	for _, e := range in.Status.Inventory.Entries {
 		split := strings.Split(e.ID, "_")
-		if len(split) < 2 {
+		if len(split) < nameNamespaceCount {
 			return types.NamespacedName{}, fmt.Errorf("failed to split ID: %s", e.ID)
 		}
 
 		if split[len(split)-1] == "ServiceAccount" {
 			name = split[1]
 			namespace = split[0]
+
 			break
 		}
 	}
@@ -96,7 +98,6 @@ func (in *Project) GetServiceAccountNamespacedName() (types.NamespacedName, erro
 	}
 
 	return types.NamespacedName{Name: name, Namespace: namespace}, nil
-
 }
 
 // +kubebuilder:object:root=true
@@ -105,7 +106,7 @@ func (in *Project) GetServiceAccountNamespacedName() (types.NamespacedName, erro
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description=""
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
 
-// Project is the Schema for the projects API
+// Project is the Schema for the projects API.
 type Project struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -135,7 +136,7 @@ func (in *Project) GetNameWithPrefix(prefix string) string {
 
 //+kubebuilder:object:root=true
 
-// ProjectList contains a list of Project
+// ProjectList contains a list of Project.
 type ProjectList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

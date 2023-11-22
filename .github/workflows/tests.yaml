@@ -1,4 +1,4 @@
-name: tests
+name: tests and lint
 
 on:
   pull_request:
@@ -41,5 +41,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - run: git config --global url.https://${{ secrets.OCMBOT_APP_ID }}:${{ steps.generate_token.outputs.token }}@github.com/.insteadOf https://github.com/
+      - name: Run lint
+        run: make lint
       - name: Run tests
         run: make test

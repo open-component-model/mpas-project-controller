@@ -21,7 +21,7 @@ import (
 	"github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 )
 
-// SecretsReconciler reconciles a Secret object
+// SecretsReconciler reconciles a Secret object.
 type SecretsReconciler struct {
 	client.Client
 	kuberecorder.EventRecorder
@@ -101,7 +101,9 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 	if err := r.Get(ctx, req.NamespacedName, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// make sure we don't have it in our list of image pull secrets.
-			return r.reconcileDelete(ctx, serviceAccount, secret)
+			r.reconcileDelete(ctx, serviceAccount, secret)
+
+			return ctrl.Result{}, nil
 		}
 
 		return ctrl.Result{}, fmt.Errorf("failed to fetch secret from cluster: %w", err)
@@ -109,14 +111,18 @@ func (r *SecretsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ 
 
 	// reconcile delete
 	if secret.DeletionTimestamp != nil {
-		return r.reconcileDelete(ctx, serviceAccount, secret)
+		r.reconcileDelete(ctx, serviceAccount, secret)
+
+		return ctrl.Result{}, nil
 	}
 
+	r.reconcileNormal(ctx, serviceAccount, secret)
+
 	// reconcile normal
-	return r.reconcileNormal(ctx, serviceAccount, secret)
+	return ctrl.Result{}, nil
 }
 
-func (r *SecretsReconciler) reconcileNormal(ctx context.Context, account *corev1.ServiceAccount, secret *corev1.Secret) (ctrl.Result, error) {
+func (r *SecretsReconciler) reconcileNormal(ctx context.Context, account *corev1.ServiceAccount, secret *corev1.Secret) {
 	logger := log.FromContext(ctx)
 
 	logger.Info("reconciling secret to image pull secrets.")
@@ -128,26 +134,22 @@ func (r *SecretsReconciler) reconcileNormal(ctx context.Context, account *corev1
 
 		logger.Info("nothing to do, secret already added to image pull secrets")
 
-		return ctrl.Result{}, nil
+		return
 	}
 
 	account.ImagePullSecrets = append(account.ImagePullSecrets, corev1.LocalObjectReference{Name: secret.Name})
-
-	return ctrl.Result{}, nil
 }
 
-func (r *SecretsReconciler) reconcileDelete(ctx context.Context, account *corev1.ServiceAccount, secret *corev1.Secret) (ctrl.Result, error) {
+func (r *SecretsReconciler) reconcileDelete(ctx context.Context, account *corev1.ServiceAccount, secret *corev1.Secret) {
 	logger := log.FromContext(ctx)
 	if !r.containsSecret(account.ImagePullSecrets, secret.Name) {
 		// nothing to do, secret already removed from service account
 		logger.Info("nothing to do, secret already removed from image pull secrets")
 
-		return ctrl.Result{}, nil
+		return
 	}
 
 	r.deleteSecret(account, secret)
-
-	return ctrl.Result{}, nil
 }
 
 func (r *SecretsReconciler) deleteSecret(account *corev1.ServiceAccount, secret *corev1.Secret) {
@@ -155,6 +157,7 @@ func (r *SecretsReconciler) deleteSecret(account *corev1.ServiceAccount, secret 
 	for i := 0; i < len(pullSecrets); i++ {
 		if pullSecrets[i].Name == secret.Name {
 			pullSecrets = append(pullSecrets[:i], pullSecrets[i+1:]...)
+
 			break
 		}
 	}

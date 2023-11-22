@@ -13,5 +13,5 @@ const (
 const (
 	// ManagedMPASSecretAnnotationKey denotes that the project controller needs to set these secrets
 	// in the service account of the project.
-	ManagedMPASSecretAnnotationKey = "mpas.ocm.system/secret.dockerconfig"
+	ManagedMPASSecretAnnotationKey = "mpas.ocm.system/secret.dockerconfig" //nolint:gosec // not a cred
 )

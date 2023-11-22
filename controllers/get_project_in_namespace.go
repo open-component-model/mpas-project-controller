@@ -12,9 +12,7 @@ import (
 	"github.com/open-component-model/mpas-project-controller/api/v1alpha1"
 )
 
-var (
-	errNotProjectNamespace = errors.New("not in a namespace that belongs to a project")
-)
+var errNotProjectNamespace = errors.New("not in a namespace that belongs to a project")
 
 // GetProjectFromObjectNamespace returns the Project from the annotation of the current namespace that an object
 // is in.
