@@ -6,6 +6,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:    
+      - main
   workflow_dispatch:
     inputs:
       logLevel:
@@ -20,6 +23,8 @@ on:
 
 jobs:
   mend-scan:
+    permissions:
+      pull-requests: write
     runs-on: ubuntu-latest
 
     steps:
