@@ -53,7 +53,7 @@ spec:
                     type: string
                 type: object
               git:
-                description: RepositorySpec defines the desired state of Repository
+                description: RepositorySpec defines the desired state of Repository.
                 properties:
                   commitTemplate:
                     description: CommitTemplate defines the commit template to use
