@@ -20,12 +20,12 @@ replace (
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
-	github.com/cert-manager/cert-manager v1.13.1
-	github.com/fluxcd/kustomize-controller/api v1.0.0-rc.3
-	github.com/fluxcd/pkg/apis/meta v1.1.2
-	github.com/fluxcd/pkg/runtime v0.35.0
+	github.com/cert-manager/cert-manager v1.14.4
+	github.com/fluxcd/kustomize-controller/api v1.2.2
+	github.com/fluxcd/pkg/apis/meta v1.3.0
+	github.com/fluxcd/pkg/runtime v0.44.1
 	github.com/fluxcd/pkg/ssa v0.36.0
-	github.com/fluxcd/source-controller/api v1.1.0
+	github.com/fluxcd/source-controller/api v1.2.4
 	github.com/open-component-model/git-controller v0.12.0
 	github.com/stretchr/testify v1.9.0
 	k8s.io/api v0.29.0
@@ -48,11 +48,11 @@ require (
 	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.7.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
-	github.com/fluxcd/pkg/apis/kustomize v1.1.1 // indirect
+	github.com/fluxcd/pkg/apis/kustomize v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
-	github.com/go-logr/zapr v1.2.4 // indirect
+	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/jsonreference v0.20.4 // indirect
 	github.com/go-openapi/swag v0.22.9 // indirect
@@ -116,7 +116,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20240103195357-a9f8850cb432 // indirect
 	k8s.io/kubectl v0.29.0 // indirect
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e // indirect
-	sigs.k8s.io/gateway-api v0.8.0 // indirect
+	sigs.k8s.io/gateway-api v1.0.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.16.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.16.0 // indirect
