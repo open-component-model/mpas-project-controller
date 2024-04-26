@@ -1,2 +1,6 @@
 resources:
 - manager.yaml
+images:
+- name: open-component-model/mpas-project-controller
+  newName: ghcr.io/open-component-model/git-controller
+  newTag: v0.6.1
